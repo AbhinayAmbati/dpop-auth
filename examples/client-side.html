@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPoP Auth Client Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .output {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛡️ DPoP Auth Client Example</h1>
+    
+    <div class="container">
+        <h2>1. Generate Device Keys</h2>
+        <p>First, generate cryptographic keys for this device:</p>
+        <button class="button" onclick="generateKeys()">Generate Device Keys</button>
+        <div id="keysOutput" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>2. User Registration</h2>
+        <div class="input-group">
+            <label for="regEmail">Email:</label>
+            <input type="email" id="regEmail" value="user@example.com">
+        </div>
+        <div class="input-group">
+            <label for="regPassword">Password:</label>
+            <input type="password" id="regPassword" value="password123">
+        </div>
+        <button class="button" onclick="register()" id="registerBtn" disabled>Register</button>
+        <div id="registerOutput" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>3. User Login</h2>
+        <div class="input-group">
+            <label for="loginEmail">Email:</label>
+            <input type="email" id="loginEmail" value="user@example.com">
+        </div>
+        <div class="input-group">
+            <label for="loginPassword">Password:</label>
+            <input type="password" id="loginPassword" value="password123">
+        </div>
+        <button class="button" onclick="login()" id="loginBtn" disabled>Login</button>
+        <div id="loginOutput" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>4. Access Protected Data</h2>
+        <button class="button" onclick="getProfile()" id="profileBtn" disabled>Get Profile</button>
+        <button class="button" onclick="getData()" id="dataBtn" disabled>Get Data</button>
+        <div id="protectedOutput" class="output" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>5. Refresh Token</h2>
+        <button class="button" onclick="refreshToken()" id="refreshBtn" disabled>Refresh Token</button>
+        <div id="refreshOutput" class="output" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Global variables to store keys and tokens
+        let deviceKeys = null;
+        let accessToken = null;
+        let refreshTokenValue = null;
+        let fingerprint = null;
+
+        // API base URL (adjust for your server)
+        const API_BASE = 'http://localhost:3000/api';
+
+        // Generate device fingerprint
+        async function generateFingerprint() {
+            const components = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                screenResolution: `${screen.width}x${screen.height}`,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                cookieEnabled: navigator.cookieEnabled,
+                doNotTrack: navigator.doNotTrack,
+            };
+
+            // Simple hash function for demo (use crypto.subtle.digest in production)
+            const str = JSON.stringify(components);
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                const char = str.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash; // Convert to 32-bit integer
+            }
+            
+            return Math.abs(hash).toString(16);
+        }
+
+        // Generate device keys using Web Crypto API
+        async function generateKeys() {
+            try {
+                showOutput('keysOutput', 'Generating device keys...', 'info');
+
+                // Generate ECDSA key pair
+                const keyPair = await crypto.subtle.generateKey(
+                    {
+                        name: "ECDSA",
+                        namedCurve: "P-256"
+                    },
+                    true,
+                    ["sign", "verify"]
+                );
+
+                // Export keys to JWK format
+                const publicKeyJwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+                const privateKeyJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+
+                // Generate fingerprint
+                fingerprint = await generateFingerprint();
+
+                // Store keys globally
+                deviceKeys = {
+                    publicKey: keyPair.publicKey,
+                    privateKey: keyPair.privateKey,
+                    publicKeyJwk,
+                    privateKeyJwk
+                };
+
+                showOutput('keysOutput', `Device keys generated successfully!
+
+Public Key JWK:
+${JSON.stringify(publicKeyJwk, null, 2)}
+
+Device Fingerprint: ${fingerprint}
+
+Keys are ready for registration.`, 'success');
+
+                // Enable registration button
+                document.getElementById('registerBtn').disabled = false;
+                document.getElementById('loginBtn').disabled = false;
+
+            } catch (error) {
+                showOutput('keysOutput', `Error generating keys: ${error.message}`, 'error');
+            }
+        }
+
+        // Register user with device binding
+        async function register() {
+            if (!deviceKeys) {
+                showOutput('registerOutput', 'Please generate device keys first!', 'error');
+                return;
+            }
+
+            try {
+                showOutput('registerOutput', 'Registering user...', 'info');
+
+                const email = document.getElementById('regEmail').value;
+                const password = document.getElementById('regPassword').value;
+
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        publicKeyJwk: deviceKeys.publicKeyJwk,
+                        fingerprint
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    accessToken = result.accessToken;
+                    refreshTokenValue = result.refreshToken;
+
+                    showOutput('registerOutput', `Registration successful!
+
+User: ${result.user.email}
+Access Token: ${accessToken.substring(0, 50)}...
+Refresh Token: ${refreshTokenValue.substring(0, 50)}...
+Expires In: ${result.expiresIn} seconds
+
+You can now access protected endpoints.`, 'success');
+
+                    // Enable protected endpoint buttons
+                    enableProtectedButtons();
+                } else {
+                    showOutput('registerOutput', `Registration failed: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                showOutput('registerOutput', `Error during registration: ${error.message}`, 'error');
+            }
+        }
+
+        // Login user with device binding
+        async function login() {
+            if (!deviceKeys) {
+                showOutput('loginOutput', 'Please generate device keys first!', 'error');
+                return;
+            }
+
+            try {
+                showOutput('loginOutput', 'Logging in...', 'info');
+
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        publicKeyJwk: deviceKeys.publicKeyJwk,
+                        fingerprint
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    accessToken = result.accessToken;
+                    refreshTokenValue = result.refreshToken;
+
+                    showOutput('loginOutput', `Login successful!
+
+User: ${result.user.email}
+Access Token: ${accessToken.substring(0, 50)}...
+Refresh Token: ${refreshTokenValue.substring(0, 50)}...
+Expires In: ${result.expiresIn} seconds
+
+You can now access protected endpoints.`, 'success');
+
+                    // Enable protected endpoint buttons
+                    enableProtectedButtons();
+                } else {
+                    showOutput('loginOutput', `Login failed: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                showOutput('loginOutput', `Error during login: ${error.message}`, 'error');
+            }
+        }
+
+        // Create DPoP proof for API requests
+        async function createDPoPProof(method, url, accessToken = null) {
+            const now = Math.floor(Date.now() / 1000);
+            const jti = crypto.randomUUID();
+
+            const header = {
+                typ: "dpop+jwt",
+                alg: "ES256",
+                jwk: deviceKeys.publicKeyJwk
+            };
+
+            const payload = {
+                htm: method.toUpperCase(),
+                htu: url,
+                iat: now,
+                jti: jti
+            };
+
+            // Add access token hash if provided
+            if (accessToken) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(accessToken);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = new Uint8Array(hashBuffer);
+                payload.ath = btoa(String.fromCharCode(...hashArray))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=/g, '');
+            }
+
+            // Add fingerprint
+            if (fingerprint) {
+                payload.fph = fingerprint;
+            }
+
+            // Create JWT manually (simplified version)
+            const headerB64 = btoa(JSON.stringify(header)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            const payloadB64 = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            
+            const message = headerB64 + '.' + payloadB64;
+            const encoder = new TextEncoder();
+            const signature = await crypto.subtle.sign(
+                {
+                    name: "ECDSA",
+                    hash: "SHA-256"
+                },
+                deviceKeys.privateKey,
+                encoder.encode(message)
+            );
+
+            const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+
+            return message + '.' + signatureB64;
+        }
+
+        // Make authenticated request to protected endpoint
+        async function makeAuthenticatedRequest(endpoint, method = 'GET') {
+            if (!accessToken || !deviceKeys) {
+                throw new Error('Not authenticated or missing device keys');
+            }
+
+            const url = `${API_BASE}${endpoint}`;
+            const dpopProof = await createDPoPProof(method, url, accessToken);
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'DPoP': dpopProof,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            return response;
+        }
+
+        // Get user profile
+        async function getProfile() {
+            try {
+                showOutput('protectedOutput', 'Fetching profile...', 'info');
+
+                const response = await makeAuthenticatedRequest('/protected/profile');
+                const result = await response.json();
+
+                if (response.ok) {
+                    showOutput('protectedOutput', `Profile data retrieved successfully!
+
+${JSON.stringify(result, null, 2)}`, 'success');
+                } else {
+                    showOutput('protectedOutput', `Failed to get profile: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                showOutput('protectedOutput', `Error getting profile: ${error.message}`, 'error');
+            }
+        }
+
+        // Get protected data
+        async function getData() {
+            try {
+                showOutput('protectedOutput', 'Fetching data...', 'info');
+
+                const response = await makeAuthenticatedRequest('/protected/data');
+                const result = await response.json();
+
+                if (response.ok) {
+                    showOutput('protectedOutput', `Protected data retrieved successfully!
+
+${JSON.stringify(result, null, 2)}`, 'success');
+                } else {
+                    showOutput('protectedOutput', `Failed to get data: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                showOutput('protectedOutput', `Error getting data: ${error.message}`, 'error');
+            }
+        }
+
+        // Refresh access token
+        async function refreshToken() {
+            if (!refreshTokenValue || !deviceKeys) {
+                showOutput('refreshOutput', 'No refresh token available or missing device keys!', 'error');
+                return;
+            }
+
+            try {
+                showOutput('refreshOutput', 'Refreshing token...', 'info');
+
+                const response = await fetch(`${API_BASE}/auth/refresh`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        refreshToken: refreshTokenValue,
+                        publicKeyJwk: deviceKeys.publicKeyJwk,
+                        fingerprint
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    accessToken = result.accessToken;
+
+                    showOutput('refreshOutput', `Token refreshed successfully!
+
+New Access Token: ${accessToken.substring(0, 50)}...
+Expires At: ${new Date(result.expiresIn).toISOString()}
+
+You can continue accessing protected endpoints.`, 'success');
+                } else {
+                    showOutput('refreshOutput', `Token refresh failed: ${result.error}`, 'error');
+                }
+
+            } catch (error) {
+                showOutput('refreshOutput', `Error refreshing token: ${error.message}`, 'error');
+            }
+        }
+
+        // Utility function to show output
+        function showOutput(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.textContent = message;
+            element.className = `output ${type}`;
+        }
+
+        // Enable protected endpoint buttons
+        function enableProtectedButtons() {
+            document.getElementById('profileBtn').disabled = false;
+            document.getElementById('dataBtn').disabled = false;
+            document.getElementById('refreshBtn').disabled = false;
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🛡️ DPoP Auth Client Example loaded');
+            console.log('Click "Generate Device Keys" to start the demo');
+        });
+    </script>
+</body>
+</html>
