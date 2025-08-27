@@ -1,6 +1,6 @@
 {
   "name": "dpop-auth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Device-bound authentication with DPoP (Demonstration of Proof-of-Possession) tokens for enhanced security",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
