@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "build:clean": "rm -rf dist && npm run build",
+    "build:clean": "rmdir /s /q dist && npm run build",
     "dev": "tsc --watch",
     "test": "jest",
     "test:watch": "jest --watch",
