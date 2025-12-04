@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, KeyLike } from 'jose';
+import { SignJWT, jwtVerify, KeyLike, decodeJwt } from 'jose';
 import type {
   DPoPConfig,
   AccessTokenPayload,
@@ -31,16 +31,17 @@ export async function createAccessToken(
   options: Partial<DPoPConfig> & {
     fingerprint?: string | undefined;
     customClaims?: Record<string, any>;
+    thumbprint?: string; // Optimization: pass thumbprint if already known
   } = {}
 ): Promise<TokenResult> {
   const config = { ...DEFAULT_CONFIG, ...options };
   const now = Math.floor(Date.now() / 1000);
   const exp = now + config.expiresIn;
   const jti = generateJTI();
-  
-  // Get device key thumbprint
-  const thumbprint = await getKeyThumbprint(devicePublicKeyJwk);
-  
+
+  // Get device key thumbprint (use provided or calculate)
+  const thumbprint = options.thumbprint || await getKeyThumbprint(devicePublicKeyJwk);
+
   // Build payload
   const payload: AccessTokenPayload = {
     sub: subject,
@@ -54,17 +55,17 @@ export async function createAccessToken(
     },
     ...options.customClaims,
   };
-  
+
   // Add fingerprint if provided and enabled
   if (config.enableFingerprinting && options.fingerprint) {
     payload.fph = options.fingerprint;
   }
-  
+
   // Create and sign JWT
   const algorithm = typeof secret === 'string' ? 'HS256' : config.algorithm;
   const jwt = new SignJWT(payload)
     .setProtectedHeader({ alg: algorithm, typ: 'JWT' });
-  
+
   // Import secret if it's a string
   let signingKey: KeyLike;
   if (typeof secret === 'string') {
@@ -81,9 +82,9 @@ export async function createAccessToken(
   } else {
     signingKey = secret;
   }
-  
+
   const token = await jwt.sign(signingKey);
-  
+
   return {
     token,
     expiresAt: exp * 1000, // Convert to milliseconds
@@ -101,6 +102,7 @@ export async function createRefreshToken(
   options: Partial<DPoPConfig> & {
     fingerprint?: string | undefined;
     expiresIn?: number; // Override for longer expiration
+    thumbprint?: string; // Optimization: pass thumbprint if already known
   } = {}
 ): Promise<TokenResult> {
   const config = { ...DEFAULT_CONFIG, ...options };
@@ -108,10 +110,10 @@ export async function createRefreshToken(
   const now = Math.floor(Date.now() / 1000);
   const exp = now + refreshExpiresIn;
   const jti = generateJTI();
-  
-  // Get device key thumbprint
-  const thumbprint = await getKeyThumbprint(devicePublicKeyJwk);
-  
+
+  // Get device key thumbprint (use provided or calculate)
+  const thumbprint = options.thumbprint || await getKeyThumbprint(devicePublicKeyJwk);
+
   // Build payload
   const payload: RefreshTokenPayload = {
     sub: subject,
@@ -123,12 +125,12 @@ export async function createRefreshToken(
       jkt: thumbprint,
     },
   };
-  
+
   // Add fingerprint if provided and enabled
   if (config.enableFingerprinting && options.fingerprint) {
     payload.fph = options.fingerprint;
   }
-  
+
   // Create and sign JWT
   const algorithm = typeof secret === 'string' ? 'HS256' : config.algorithm;
   const jwt = new SignJWT(payload)
@@ -150,9 +152,9 @@ export async function createRefreshToken(
   } else {
     signingKey = secret;
   }
-  
+
   const token = await jwt.sign(signingKey);
-  
+
   return {
     token,
     expiresAt: exp * 1000, // Convert to milliseconds
@@ -169,7 +171,7 @@ export async function verifyAccessToken(
   options: Partial<DPoPConfig> = {}
 ): Promise<TokenVerificationResult> {
   const config = { ...DEFAULT_CONFIG, ...options };
-  
+
   try {
     // Import secret if it's a string
     let verificationKey: KeyLike;
@@ -187,23 +189,23 @@ export async function verifyAccessToken(
     } else {
       verificationKey = secret;
     }
-    
+
     const { payload } = await jwtVerify(token, verificationKey, {
       issuer: config.issuer,
       audience: config.audience,
       clockTolerance: config.clockTolerance,
     });
-    
+
     // Validate required claims
     const accessTokenPayload = payload as AccessTokenPayload;
-    
+
     if (!accessTokenPayload.cnf?.jkt) {
       return {
         valid: false,
         error: 'Missing device key thumbprint (cnf.jkt)',
       };
     }
-    
+
     return {
       valid: true,
       payload: accessTokenPayload,
@@ -225,7 +227,7 @@ export async function verifyRefreshToken(
   options: Partial<DPoPConfig> = {}
 ): Promise<TokenVerificationResult> {
   const config = { ...DEFAULT_CONFIG, ...options };
-  
+
   try {
     // Import secret if it's a string
     let verificationKey: KeyLike;
@@ -243,30 +245,30 @@ export async function verifyRefreshToken(
     } else {
       verificationKey = secret;
     }
-    
+
     const { payload } = await jwtVerify(token, verificationKey, {
       issuer: config.issuer,
       audience: config.audience,
       clockTolerance: config.clockTolerance,
     });
-    
+
     // Validate required claims
     const refreshTokenPayload = payload as RefreshTokenPayload;
-    
+
     if (refreshTokenPayload.typ !== 'refresh') {
       return {
         valid: false,
         error: 'Invalid token type, expected refresh token',
       };
     }
-    
+
     if (!refreshTokenPayload.cnf?.jkt) {
       return {
         valid: false,
         error: 'Missing device key thumbprint (cnf.jkt)',
       };
     }
-    
+
     return {
       valid: true,
       payload: refreshTokenPayload,
@@ -285,11 +287,8 @@ export async function verifyRefreshToken(
 export function extractThumbprintFromToken(token: string): string | null {
   try {
     // Decode JWT payload without verification (for thumbprint extraction only)
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    
-    const payload = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString());
-    return payload.cnf?.jkt || null;
+    const payload = decodeJwt(token);
+    return (payload as any).cnf?.jkt || null;
   } catch {
     return null;
   }
@@ -300,12 +299,9 @@ export function extractThumbprintFromToken(token: string): string | null {
  */
 export function isTokenExpired(token: string, clockTolerance: number = 60): boolean {
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return true;
-    
-    const payload = JSON.parse(Buffer.from(parts[1]!, 'base64url').toString());
+    const payload = decodeJwt(token);
     const now = Math.floor(Date.now() / 1000);
-    
+
     return !payload.exp || (payload.exp + clockTolerance) < now;
   } catch {
     return true;

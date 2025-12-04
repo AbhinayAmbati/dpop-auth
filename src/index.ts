@@ -72,6 +72,9 @@ export type {
 import type { DPoPConfig, MiddlewareOptions } from './types';
 
 // Utility functions for common use cases
+import { createAccessToken, createRefreshToken, verifyRefreshToken } from './core/tokens';
+import { getKeyThumbprint } from './core/crypto';
+
 export class DPoPAuth {
   private config: Required<DPoPConfig>;
   private secret: string;
@@ -89,7 +92,7 @@ export class DPoPAuth {
       ...config,
     };
   }
-  
+
   /**
    * Create a complete authentication flow
    */
@@ -98,27 +101,30 @@ export class DPoPAuth {
     devicePublicKeyJwk: any,
     fingerprint?: string
   ) {
-    const { createAccessToken, createRefreshToken } = await import('./core/tokens');
-    
+    // Calculate thumbprint once for efficiency
+    const thumbprint = await getKeyThumbprint(devicePublicKeyJwk);
+
     const [accessToken, refreshToken] = await Promise.all([
       createAccessToken(userId, devicePublicKeyJwk, this.secret, {
         ...this.config,
         fingerprint: fingerprint || undefined,
+        thumbprint,
       }),
       createRefreshToken(userId, devicePublicKeyJwk, this.secret, {
         ...this.config,
         fingerprint: fingerprint || undefined,
         expiresIn: 7 * 24 * 60 * 60, // 7 days
+        thumbprint,
       }),
     ]);
-    
+
     return {
       accessToken,
       refreshToken,
       expiresIn: this.config.expiresIn,
     };
   }
-  
+
   /**
    * Refresh access token using refresh token
    */
@@ -127,16 +133,17 @@ export class DPoPAuth {
     devicePublicKeyJwk: any,
     fingerprint?: string
   ) {
-    const { verifyRefreshToken, createAccessToken } = await import('./core/tokens');
-    
     // Verify refresh token
     const result = await verifyRefreshToken(refreshToken, this.secret, this.config);
     if (!result.valid) {
       throw new Error(`Invalid refresh token: ${result.error}`);
     }
-    
+
     const payload = result.payload!;
-    
+
+    // Calculate thumbprint for new token
+    const thumbprint = await getKeyThumbprint(devicePublicKeyJwk);
+
     // Create new access token
     const accessToken = await createAccessToken(
       payload.sub,
@@ -145,12 +152,13 @@ export class DPoPAuth {
       {
         ...this.config,
         fingerprint: fingerprint || undefined,
+        thumbprint,
       }
     );
-    
+
     return accessToken;
   }
-  
+
   /**
    * Get Express middleware with current configuration
    */
