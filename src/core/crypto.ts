@@ -5,21 +5,52 @@ import type {
   KeyPairOptions,
   FingerprintComponents
 } from '../types';
+import { thumbprintCache, createJwkCacheKey, keyImportCache } from './cache';
+
+/**
+ * Extended algorithm support including ES384, ES512, PS256
+ */
+export type ExtendedAlgorithm = DPoPAlgorithm | 'ES384' | 'ES512' | 'PS256' | 'PS384' | 'PS512';
+
+/**
+ * Algorithm to curve mapping for EC keys
+ */
+const EC_ALGORITHM_CURVES: Record<string, string> = {
+  ES256: 'P-256',
+  ES384: 'P-384',
+  ES512: 'P-521',
+};
 
 /**
  * Generate a cryptographic key pair for DPoP authentication
+ * Supports: ES256, ES384, ES512, RS256, PS256, PS384, PS512
  */
-export async function generateDPoPKeyPair(options: KeyPairOptions = {}) {
-  const { algorithm = 'ES256', keySize = 2048, curve = 'P-256' } = options;
+export async function generateDPoPKeyPair(options: KeyPairOptions & { algorithm?: ExtendedAlgorithm } = {}) {
+  const { algorithm = 'ES256', keySize = 2048 } = options;
+  let { curve } = options;
 
   let keyPair;
 
-  if (algorithm === 'ES256') {
-    keyPair = await generateKeyPair('ES256', {
+  // EC algorithms
+  if (algorithm.startsWith('ES')) {
+    // Auto-select curve based on algorithm if not specified
+    if (!curve) {
+      curve = EC_ALGORITHM_CURVES[algorithm] || 'P-256';
+    }
+    keyPair = await generateKeyPair(algorithm, {
       crv: curve,
       extractable: true,
     });
-  } else if (algorithm === 'RS256') {
+  }
+  // RSA-PSS algorithms  
+  else if (algorithm.startsWith('PS')) {
+    keyPair = await generateKeyPair(algorithm, {
+      modulusLength: keySize,
+      extractable: true,
+    });
+  }
+  // RSA PKCS#1 v1.5
+  else if (algorithm === 'RS256') {
     keyPair = await generateKeyPair('RS256', {
       modulusLength: keySize,
       extractable: true,
@@ -31,6 +62,10 @@ export async function generateDPoPKeyPair(options: KeyPairOptions = {}) {
   const publicKeyJwk = await exportJWK(keyPair.publicKey);
   const privateKeyJwk = await exportJWK(keyPair.privateKey);
   const thumbprint = await calculateJwkThumbprint(publicKeyJwk);
+
+  // Cache the thumbprint
+  const cacheKey = createJwkCacheKey(publicKeyJwk);
+  thumbprintCache.set(cacheKey, thumbprint);
 
   return {
     publicKey: keyPair.publicKey,
@@ -44,17 +79,31 @@ export async function generateDPoPKeyPair(options: KeyPairOptions = {}) {
 
 /**
  * Import a JWK key for cryptographic operations
+ * Uses caching for improved performance
  */
-export async function importDPoPKey(jwk: any, algorithm: DPoPAlgorithm) {
+export async function importDPoPKey(jwk: any, algorithm: DPoPAlgorithm | ExtendedAlgorithm) {
   try {
-    const key = await importJWK(jwk, algorithm);
-    const thumbprint = await calculateJwkThumbprint(jwk);
+    const cacheKey = `${createJwkCacheKey(jwk)}:${algorithm}`;
 
-    return {
+    // Check cache first
+    const cached = keyImportCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const key = await importJWK(jwk, algorithm);
+    const thumbprint = await getKeyThumbprint(jwk);
+
+    const result = {
       key,
       thumbprint,
       jwk,
     };
+
+    // Cache the result
+    keyImportCache.set(cacheKey, result);
+
+    return result;
   } catch (error) {
     throw new Error(`Failed to import key: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -62,10 +111,23 @@ export async function importDPoPKey(jwk: any, algorithm: DPoPAlgorithm) {
 
 /**
  * Calculate JWK thumbprint for device identification
+ * Uses caching for improved performance
  */
 export async function getKeyThumbprint(jwk: any): Promise<string> {
   try {
-    return await calculateJwkThumbprint(jwk);
+    // Check cache first
+    const cacheKey = createJwkCacheKey(jwk);
+    const cached = thumbprintCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const thumbprint = await calculateJwkThumbprint(jwk);
+
+    // Cache the result
+    thumbprintCache.set(cacheKey, thumbprint);
+
+    return thumbprint;
   } catch (error) {
     throw new Error(`Failed to calculate thumbprint: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
