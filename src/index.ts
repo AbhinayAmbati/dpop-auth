@@ -5,7 +5,7 @@
  * Provides secure device-bound tokens, anti-replay protection, and Express middleware.
  * 
  * @author Abhinay Ambati
- * @version 1.0.0
+ * @version 1.0.2
  */
 
 // Core functionality
@@ -263,7 +263,7 @@ export function createDPoPAuth(secret: string, options?: DPoPAuthOptions) {
 /**
  * Version information
  */
-export const VERSION = '1.0.0';
+export const VERSION = '1.0.2';
 
 /**
  * Library information
