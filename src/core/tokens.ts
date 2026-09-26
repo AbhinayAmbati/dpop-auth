@@ -14,12 +14,27 @@ import { generateJTI, getKeyThumbprint } from './crypto';
 const DEFAULT_CONFIG: Required<DPoPConfig> = {
   algorithm: 'ES256',
   expiresIn: 300, // 5 minutes
-  clockTolerance: 60, // 1 minute
+  clockTolerance: 0,
   maxAge: 300, // 5 minutes
   enableFingerprinting: true,
   issuer: 'dpop-auth',
   audience: 'dpop-auth',
 };
+
+/**
+ * Import a string secret as a CryptoKey for HMAC signing/verification
+ */
+async function importSymmetricKey(secret: string, usage: 'sign' | 'verify'): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  return crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    [usage]
+  );
+}
 
 /**
  * Create an access token bound to a device key
@@ -69,16 +84,7 @@ export async function createAccessToken(
   // Import secret if it's a string
   let signingKey: KeyLike;
   if (typeof secret === 'string') {
-    // For string secrets, create a symmetric key
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    signingKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
+    signingKey = await importSymmetricKey(secret, 'sign') as unknown as KeyLike;
   } else {
     signingKey = secret;
   }
@@ -120,6 +126,8 @@ export async function createRefreshToken(
     iat: now,
     exp,
     jti,
+    iss: config.issuer,
+    aud: config.audience,
     typ: 'refresh',
     cnf: {
       jkt: thumbprint,
@@ -139,16 +147,7 @@ export async function createRefreshToken(
   // Import secret if it's a string
   let signingKey: KeyLike;
   if (typeof secret === 'string') {
-    // For string secrets, create a symmetric key
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    signingKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
+    signingKey = await importSymmetricKey(secret, 'sign') as unknown as KeyLike;
   } else {
     signingKey = secret;
   }
@@ -176,16 +175,7 @@ export async function verifyAccessToken(
     // Import secret if it's a string
     let verificationKey: KeyLike;
     if (typeof secret === 'string') {
-      // For string secrets, create a symmetric key
-      const encoder = new TextEncoder();
-      const keyData = encoder.encode(secret);
-      verificationKey = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['verify']
-      );
+      verificationKey = await importSymmetricKey(secret, 'verify') as unknown as KeyLike;
     } else {
       verificationKey = secret;
     }
@@ -232,16 +222,7 @@ export async function verifyRefreshToken(
     // Import secret if it's a string
     let verificationKey: KeyLike;
     if (typeof secret === 'string') {
-      // For string secrets, create a symmetric key
-      const encoder = new TextEncoder();
-      const keyData = encoder.encode(secret);
-      verificationKey = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['verify']
-      );
+      verificationKey = await importSymmetricKey(secret, 'verify') as unknown as KeyLike;
     } else {
       verificationKey = secret;
     }
@@ -297,12 +278,12 @@ export function extractThumbprintFromToken(token: string): string | null {
 /**
  * Check if token is expired (without full verification)
  */
-export function isTokenExpired(token: string, clockTolerance: number = 60): boolean {
+export function isTokenExpired(token: string, clockTolerance: number = 0): boolean {
   try {
     const payload = decodeJwt(token);
     const now = Math.floor(Date.now() / 1000);
 
-    return !payload.exp || (payload.exp + clockTolerance) < now;
+    return !payload.exp || (payload.exp + clockTolerance) <= now;
   } catch {
     return true;
   }

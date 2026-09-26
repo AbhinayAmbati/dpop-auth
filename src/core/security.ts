@@ -2,25 +2,19 @@
  * Security utilities and hardening functions
  */
 
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 /**
  * Constant-time string comparison to prevent timing attacks
  */
 export function secureCompare(a: string, b: string): boolean {
     try {
-        const bufA = Buffer.from(a, 'utf8');
-        const bufB = Buffer.from(b, 'utf8');
+        // Hash both inputs to fixed-length buffers to prevent
+        // length-based timing side-channel attacks
+        const hashA = createHash('sha256').update(a, 'utf8').digest();
+        const hashB = createHash('sha256').update(b, 'utf8').digest();
 
-        // If lengths differ, we still do the comparison to maintain constant time
-        // but we know the result will be false
-        if (bufA.length !== bufB.length) {
-            // Compare against itself to maintain constant time
-            timingSafeEqual(bufA, bufA);
-            return false;
-        }
-
-        return timingSafeEqual(bufA, bufB);
+        return timingSafeEqual(hashA, hashB);
     } catch {
         return false;
     }
@@ -61,7 +55,6 @@ export function generateSecureString(length: number = 32): string {
  * Create a secure hash using HMAC
  */
 export function createHmacHash(data: string, secret: string, algorithm: string = 'sha256'): string {
-    const { createHmac } = require('node:crypto');
     return createHmac(algorithm, secret).update(data).digest('base64url');
 }
 
@@ -108,9 +101,17 @@ export function validateSecretStrength(secret: string): {
         score += 15;
     }
 
-    // Entropy estimation
-    const uniqueChars = new Set(secret).size;
-    const entropy = Math.log2(Math.pow(uniqueChars, secret.length));
+    // Entropy estimation using Shannon entropy (avoids Math.pow overflow on long secrets)
+    const charFrequencies = new Map<string, number>();
+    for (const char of secret) {
+        charFrequencies.set(char, (charFrequencies.get(char) || 0) + 1);
+    }
+    let shannonEntropy = 0;
+    for (const count of charFrequencies.values()) {
+        const p = count / secret.length;
+        shannonEntropy -= p * Math.log2(p);
+    }
+    const entropy = shannonEntropy * secret.length;
 
     if (entropy < 128) {
         issues.push(`Entropy is low (${Math.floor(entropy)} bits), aim for at least 128 bits`);
@@ -238,10 +239,13 @@ export const IPUtils = {
      * Validate IP address format
      */
     isValid(ip: string): boolean {
-        const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
+        const ipv4Match = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+        if (ipv4Match) {
+            return ipv4Match.slice(1).every(octet => Number(octet) >= 0 && Number(octet) <= 255);
+        }
         const ipv6 = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::$|^(([0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:)*[0-9a-fA-F]{1,4}$/;
 
-        return ipv4.test(ip) || ipv6.test(ip);
+        return ipv6.test(ip);
     },
 };
 

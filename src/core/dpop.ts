@@ -228,7 +228,7 @@ export function validateDPoPFormat(dpopProof: string): { valid: boolean; error?:
       return { valid: false, error: 'Missing public key in header' };
     }
 
-    if (!header.alg || !['ES256', 'RS256'].includes(header.alg)) {
+    if (!header.alg || !['ES256', 'ES384', 'ES512', 'RS256', 'PS256', 'PS384', 'PS512'].includes(header.alg)) {
       return { valid: false, error: 'Invalid or missing algorithm' };
     }
 

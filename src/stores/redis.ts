@@ -4,6 +4,7 @@
  */
 
 import type { ReplayStore } from '../types';
+import type { RevocationStore } from '../core/token-utils';
 
 /**
  * Generic Redis client interface
@@ -81,7 +82,7 @@ export class RedisReplayStore implements ReplayStore {
  * Redis-based token revocation store
  * For storing revoked tokens until their natural expiration
  */
-export class RedisRevocationStore {
+export class RedisRevocationStore implements RevocationStore {
     private client: RedisClient;
     private keyPrefix: string;
     private maxTtlSeconds: number;
@@ -101,7 +102,8 @@ export class RedisRevocationStore {
         // Calculate TTL based on token expiration or use max TTL
         let ttl = this.maxTtlSeconds;
         if (tokenExp) {
-            const remaining = Math.ceil((tokenExp * 1000 - Date.now()) / 1000);
+            const expMs = tokenExp < 1e11 ? tokenExp * 1000 : tokenExp;
+            const remaining = Math.ceil((expMs - Date.now()) / 1000);
             ttl = Math.max(1, Math.min(remaining, this.maxTtlSeconds));
         }
 
@@ -120,7 +122,10 @@ export class RedisRevocationStore {
     /**
      * Revoke all tokens for a user
      */
-    async revokeAllForUser(_userId: string, tokenJtis: string[]): Promise<void> {
+    async revokeAllForUser(_userId: string, tokenJtis?: string[]): Promise<void> {
+        if (!tokenJtis || tokenJtis.length === 0) {
+            return;
+        }
         const promises = tokenJtis.map(jti => this.revoke(jti));
         await Promise.all(promises);
     }

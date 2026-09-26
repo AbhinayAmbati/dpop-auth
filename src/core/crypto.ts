@@ -3,14 +3,17 @@ import { createHash, randomBytes } from 'node:crypto';
 import type {
   DPoPAlgorithm,
   KeyPairOptions,
+  KeyPairResult,
   FingerprintComponents
 } from '../types';
+<<<<<<< HEAD
 import { thumbprintCache, createJwkCacheKey, keyImportCache } from './cache';
 
 /**
- * Extended algorithm support including ES384, ES512, PS256
+ * Extended algorithm type - kept as an alias for backwards compatibility
+ * @deprecated Use DPoPAlgorithm instead, which now includes all supported algorithms
  */
-export type ExtendedAlgorithm = DPoPAlgorithm | 'ES384' | 'ES512' | 'PS256' | 'PS384' | 'PS512';
+export type ExtendedAlgorithm = DPoPAlgorithm;
 
 /**
  * Algorithm to curve mapping for EC keys
@@ -20,37 +23,31 @@ const EC_ALGORITHM_CURVES: Record<string, string> = {
   ES384: 'P-384',
   ES512: 'P-521',
 };
+=======
+>>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
 
 /**
  * Generate a cryptographic key pair for DPoP authentication
- * Supports: ES256, ES384, ES512, RS256, PS256, PS384, PS512
  */
-export async function generateDPoPKeyPair(options: KeyPairOptions & { algorithm?: ExtendedAlgorithm } = {}) {
+<<<<<<< HEAD
+export async function generateDPoPKeyPair(
+  options: KeyPairOptions & { algorithm?: ExtendedAlgorithm } = {}
+): Promise<KeyPairResult> {
   const { algorithm = 'ES256', keySize = 2048 } = options;
   let { curve } = options;
+=======
+export async function generateDPoPKeyPair(options: KeyPairOptions = {}) {
+  const { algorithm = 'ES256', keySize = 2048, curve = 'P-256' } = options;
+>>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
 
   let keyPair;
 
-  // EC algorithms
-  if (algorithm.startsWith('ES')) {
-    // Auto-select curve based on algorithm if not specified
-    if (!curve) {
-      curve = EC_ALGORITHM_CURVES[algorithm] || 'P-256';
-    }
-    keyPair = await generateKeyPair(algorithm, {
+  if (algorithm === 'ES256') {
+    keyPair = await generateKeyPair('ES256', {
       crv: curve,
       extractable: true,
     });
-  }
-  // RSA-PSS algorithms  
-  else if (algorithm.startsWith('PS')) {
-    keyPair = await generateKeyPair(algorithm, {
-      modulusLength: keySize,
-      extractable: true,
-    });
-  }
-  // RSA PKCS#1 v1.5
-  else if (algorithm === 'RS256') {
+  } else if (algorithm === 'RS256') {
     keyPair = await generateKeyPair('RS256', {
       modulusLength: keySize,
       extractable: true,
@@ -62,10 +59,6 @@ export async function generateDPoPKeyPair(options: KeyPairOptions & { algorithm?
   const publicKeyJwk = await exportJWK(keyPair.publicKey);
   const privateKeyJwk = await exportJWK(keyPair.privateKey);
   const thumbprint = await calculateJwkThumbprint(publicKeyJwk);
-
-  // Cache the thumbprint
-  const cacheKey = createJwkCacheKey(publicKeyJwk);
-  thumbprintCache.set(cacheKey, thumbprint);
 
   return {
     publicKey: keyPair.publicKey,
@@ -79,31 +72,17 @@ export async function generateDPoPKeyPair(options: KeyPairOptions & { algorithm?
 
 /**
  * Import a JWK key for cryptographic operations
- * Uses caching for improved performance
  */
-export async function importDPoPKey(jwk: any, algorithm: DPoPAlgorithm | ExtendedAlgorithm) {
+export async function importDPoPKey(jwk: any, algorithm: DPoPAlgorithm) {
   try {
-    const cacheKey = `${createJwkCacheKey(jwk)}:${algorithm}`;
-
-    // Check cache first
-    const cached = keyImportCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
     const key = await importJWK(jwk, algorithm);
-    const thumbprint = await getKeyThumbprint(jwk);
+    const thumbprint = await calculateJwkThumbprint(jwk);
 
-    const result = {
+    return {
       key,
       thumbprint,
       jwk,
     };
-
-    // Cache the result
-    keyImportCache.set(cacheKey, result);
-
-    return result;
   } catch (error) {
     throw new Error(`Failed to import key: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -111,23 +90,10 @@ export async function importDPoPKey(jwk: any, algorithm: DPoPAlgorithm | Extende
 
 /**
  * Calculate JWK thumbprint for device identification
- * Uses caching for improved performance
  */
 export async function getKeyThumbprint(jwk: any): Promise<string> {
   try {
-    // Check cache first
-    const cacheKey = createJwkCacheKey(jwk);
-    const cached = thumbprintCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const thumbprint = await calculateJwkThumbprint(jwk);
-
-    // Cache the result
-    thumbprintCache.set(cacheKey, thumbprint);
-
-    return thumbprint;
+    return await calculateJwkThumbprint(jwk);
   } catch (error) {
     throw new Error(`Failed to calculate thumbprint: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -240,12 +206,13 @@ export function compareFingerprintHashes(
   hash2: string,
   tolerance: number = 0
 ): boolean {
-  if (tolerance === 0) {
-    return hash1 === hash2;
+  if (tolerance !== 0) {
+    throw new Error(
+      'Fuzzy fingerprint matching (tolerance > 0) is not yet implemented. ' +
+      'Use tolerance = 0 for exact matching.'
+    );
   }
 
-  // For future implementation: fuzzy matching with Hamming distance
-  // Currently just exact match
   return hash1 === hash2;
 }
 

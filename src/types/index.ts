@@ -3,7 +3,7 @@ import { JWK, KeyLike } from 'jose';
 /**
  * Supported cryptographic algorithms for DPoP
  */
-export type DPoPAlgorithm = 'ES256' | 'RS256';
+export type DPoPAlgorithm = 'ES256' | 'ES384' | 'ES512' | 'RS256' | 'PS256' | 'PS384' | 'PS512';
 
 /**
  * DPoP token configuration options
@@ -92,6 +92,10 @@ export interface RefreshTokenPayload {
   exp: number;
   /** JWT ID */
   jti: string;
+  /** Issuer */
+  iss?: string;
+  /** Audience */
+  aud?: string;
   /** Token type */
   typ: 'refresh';
   /** Device key thumbprint */
@@ -198,6 +202,24 @@ export interface KeyPairOptions {
   keySize?: number;
   /** Curve for EC keys (default: P-256) */
   curve?: string;
+}
+
+/**
+ * Result of generating a DPoP key pair
+ */
+export interface KeyPairResult {
+  /** CryptoKey public key */
+  publicKey: KeyLike;
+  /** CryptoKey private key */
+  privateKey: KeyLike;
+  /** Public key in JWK format */
+  publicKeyJwk: JWK;
+  /** Private key in JWK format */
+  privateKeyJwk: JWK;
+  /** JWK thumbprint (SHA-256) */
+  thumbprint: string;
+  /** Algorithm used */
+  algorithm: DPoPAlgorithm;
 }
 
 /**

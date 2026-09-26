@@ -15,6 +15,7 @@ import {
   generateFingerprintHash,
   validateFingerprintComponents 
 } from '../core/crypto';
+import { secureCompare } from '../core/security';
 
 // Extend Express Request type
 declare global {
@@ -26,9 +27,15 @@ declare global {
 }
 
 /**
- * Default replay store for development
+ * Lazily-created default replay store for development
  */
-const defaultReplayStore = new MemoryReplayStore();
+let _defaultReplayStore: MemoryReplayStore | null = null;
+function getDefaultReplayStore(): MemoryReplayStore {
+  if (!_defaultReplayStore) {
+    _defaultReplayStore = new MemoryReplayStore();
+  }
+  return _defaultReplayStore;
+}
 
 /**
  * Express middleware for DPoP authentication
@@ -40,7 +47,7 @@ export function dpopAuth(options: MiddlewareOptions) {
 
   const {
     secret,
-    replayStore = defaultReplayStore,
+    replayStore = getDefaultReplayStore(),
     skipDPoP = false,
     onError,
     ...config
@@ -48,16 +55,21 @@ export function dpopAuth(options: MiddlewareOptions) {
 
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // Extract Authorization header
+      // Extract Authorization header — accept both DPoP and Bearer schemes (RFC 9449)
       const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) {
+      let accessToken: string | undefined;
+
+      if (authHeader?.startsWith('DPoP ')) {
+        accessToken = authHeader.substring(5);
+      } else if (authHeader?.startsWith('Bearer ')) {
+        accessToken = authHeader.substring(7);
+      } else {
         return handleError(
-          new Error('Missing or invalid Authorization header'),
+          new Error('Missing or invalid Authorization header. Expected: DPoP <token> or Bearer <token>'),
           req, res, next, onError
         );
       }
 
-      const accessToken = authHeader.substring(7);
       if (!accessToken) {
         return handleError(
           new Error('Empty access token'),
@@ -137,7 +149,7 @@ export function dpopAuth(options: MiddlewareOptions) {
       const tokenThumbprint = tokenPayload.cnf?.jkt;
       const dpopThumbprint = dpopResult.thumbprint;
 
-      if (!tokenThumbprint || tokenThumbprint !== dpopThumbprint) {
+      if (!tokenThumbprint || !secureCompare(tokenThumbprint, dpopThumbprint)) {
         return handleError(
           new Error('Device key mismatch between token and DPoP proof'),
           req, res, next, onError
@@ -241,9 +253,8 @@ function extractFingerprintComponents(req: Request) {
     userAgent: req.get('user-agent'),
     acceptLanguage: req.get('accept-language'),
     acceptEncoding: req.get('accept-encoding'),
-    // Add more components as needed
-    xForwardedFor: req.get('x-forwarded-for'),
-    xRealIp: req.get('x-real-ip'),
+    // Note: proxy headers (x-forwarded-for, x-real-ip) are excluded because
+    // they change across networks/proxies and cause false fingerprint mismatches
   };
 }
 
@@ -283,6 +294,11 @@ export function cleanupReplayStore(replayStore: ReplayStore, intervalMs: number 
       console.error('Failed to cleanup replay store:', error);
     }
   }, intervalMs);
+
+  // Don't hold the process open
+  if (interval.unref) {
+    interval.unref();
+  }
 
   // Return cleanup function
   return () => clearInterval(interval);

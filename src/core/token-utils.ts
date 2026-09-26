@@ -99,8 +99,9 @@ export class MemoryRevocationStore implements RevocationStore {
         const expiresAt = this.store.get(jti);
         if (!expiresAt) return false;
 
-        // If the natural expiration has passed, remove from store
-        if (Date.now() > expiresAt * 1000) {
+        // Normalize expiresAt to milliseconds (if passed as seconds < 1e11)
+        const expiresAtMs = expiresAt < 1e11 ? expiresAt * 1000 : expiresAt;
+        if (Date.now() > expiresAtMs) {
             this.store.delete(jti);
             return false;
         }
@@ -111,7 +112,8 @@ export class MemoryRevocationStore implements RevocationStore {
     cleanup(): void {
         const now = Date.now();
         for (const [jti, expiresAt] of this.store.entries()) {
-            if (now > expiresAt * 1000) {
+            const expiresAtMs = expiresAt < 1e11 ? expiresAt * 1000 : expiresAt;
+            if (now > expiresAtMs) {
                 this.store.delete(jti);
             }
         }

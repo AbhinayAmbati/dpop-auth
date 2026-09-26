@@ -5,7 +5,7 @@
  * Provides secure device-bound tokens, anti-replay protection, and Express middleware.
  * 
  * @author Abhinay Ambati
- * @version 2.0.0
+ * @version 1.0.0
  */
 
 // Core functionality
@@ -21,7 +21,6 @@ export {
   compareFingerprintHashes,
   validateTimestamp,
   createSecureHash,
-  type ExtendedAlgorithm,
 } from './core/crypto';
 
 export {
@@ -42,57 +41,6 @@ export {
   MemoryReplayStore,
 } from './core/dpop';
 
-// Error handling
-export {
-  DPoPErrorCode,
-  DPoPError,
-  Errors,
-} from './core/errors';
-
-// Cache utilities
-export {
-  LRUCache,
-  thumbprintCache,
-  keyImportCache,
-  createJwkCacheKey,
-} from './core/cache';
-
-// Rate limiting
-export {
-  SlidingWindowRateLimiter,
-  TokenBucketRateLimiter,
-  createRateLimiterMiddleware,
-  type RateLimiterConfig,
-  type RateLimiterResult,
-} from './core/rate-limiter';
-
-// Token utilities
-export {
-  introspectToken,
-  MemoryRevocationStore,
-  TokenRotationManager,
-  validateTokenStructure,
-  getTokenLifetime,
-  type TokenIntrospectionResult,
-  type RevocationStore,
-} from './core/token-utils';
-
-// Security utilities
-export {
-  secureCompare,
-  secureCompareBuffers,
-  generateSecureBytes,
-  generateSecureString,
-  createHmacHash,
-  validateSecretStrength,
-  sanitizeForLogging,
-  maskSensitiveData,
-  validateJwkSecurity,
-  IPUtils,
-  createRequestSignature,
-  verifyRequestSignature,
-} from './core/security';
-
 // Express middleware
 export {
   dpopAuth,
@@ -101,16 +49,6 @@ export {
   requireUser,
   cleanupReplayStore,
 } from './middleware/express';
-
-// Redis stores (for production)
-export {
-  RedisReplayStore,
-  RedisRevocationStore,
-  RedisNonceStore,
-  RedisDeviceRegistry,
-  type RedisClient,
-  type RedisStoreConfig,
-} from './stores/redis';
 
 // Types
 export type {
@@ -127,49 +65,29 @@ export type {
   ReplayStore,
   MiddlewareOptions,
   KeyPairOptions,
+  KeyPairResult,
   DPoPRequest,
 } from './types';
 
 // Import types for the utility class
-import type { DPoPConfig, MiddlewareOptions, ReplayStore } from './types';
-import type { RevocationStore } from './core/token-utils';
+import type { DPoPConfig, MiddlewareOptions } from './types';
 
 // Utility functions for common use cases
-import { createAccessToken, createRefreshToken, verifyRefreshToken, verifyAccessToken } from './core/tokens';
+import { createAccessToken, createRefreshToken, verifyRefreshToken } from './core/tokens';
 import { getKeyThumbprint } from './core/crypto';
+<<<<<<< HEAD
 import { validateSecretStrength } from './core/security';
 import { DPoPError, DPoPErrorCode } from './core/errors';
+import { dpopAuth as dpopAuthMiddleware } from './middleware/express';
+=======
+>>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
 
-/**
- * Main DPoP authentication class with enhanced features
- */
 export class DPoPAuth {
   private config: Required<DPoPConfig>;
   private secret: string;
-  private replayStore: ReplayStore | undefined;
-  private revocationStore: RevocationStore | undefined;
 
-  constructor(secret: string, config: Partial<DPoPConfig> & {
-    replayStore?: ReplayStore;
-    revocationStore?: RevocationStore;
-    validateSecret?: boolean;
-  } = {}) {
-    // Validate secret strength if enabled (default: true in production)
-    if (config.validateSecret !== false) {
-      const validation = validateSecretStrength(secret);
-      if (!validation.valid && process.env['NODE_ENV'] === 'production') {
-        throw new DPoPError(
-          DPoPErrorCode.CONFIG_MISSING_SECRET,
-          `Weak secret: ${validation.issues.join(', ')}`,
-          500
-        );
-      }
-    }
-
+  constructor(secret: string, config: Partial<DPoPConfig> = {}) {
     this.secret = secret;
-    this.replayStore = config.replayStore;
-    this.revocationStore = config.revocationStore;
-
     this.config = {
       algorithm: 'ES256',
       expiresIn: 300,
@@ -183,20 +101,12 @@ export class DPoPAuth {
   }
 
   /**
-   * Get the current configuration
-   */
-  getConfig(): Readonly<DPoPConfig> {
-    return { ...this.config };
-  }
-
-  /**
    * Create a complete authentication flow
    */
   async createAuthFlow(
     userId: string,
     devicePublicKeyJwk: any,
-    fingerprint?: string,
-    customClaims?: Record<string, any>
+    fingerprint?: string
   ) {
     // Calculate thumbprint once for efficiency
     const thumbprint = await getKeyThumbprint(devicePublicKeyJwk);
@@ -206,7 +116,6 @@ export class DPoPAuth {
         ...this.config,
         fingerprint: fingerprint || undefined,
         thumbprint,
-        ...(customClaims ? { customClaims } : {}),
       }),
       createRefreshToken(userId, devicePublicKeyJwk, this.secret, {
         ...this.config,
@@ -219,33 +128,8 @@ export class DPoPAuth {
     return {
       accessToken,
       refreshToken,
-      thumbprint,
       expiresIn: this.config.expiresIn,
     };
-  }
-
-  /**
-   * Verify an access token
-   */
-  async verifyToken(token: string) {
-    const result = await verifyAccessToken(token, this.secret, this.config);
-
-    if (!result.valid) {
-      return result;
-    }
-
-    // Check revocation if store is configured
-    if (this.revocationStore && result.payload?.jti) {
-      const isRevoked = await this.revocationStore.isRevoked(result.payload.jti);
-      if (isRevoked) {
-        return {
-          valid: false,
-          error: 'Token has been revoked',
-        };
-      }
-    }
-
-    return result;
   }
 
   /**
@@ -259,11 +143,7 @@ export class DPoPAuth {
     // Verify refresh token
     const result = await verifyRefreshToken(refreshToken, this.secret, this.config);
     if (!result.valid) {
-      throw new DPoPError(
-        DPoPErrorCode.AUTH_TOKEN_INVALID,
-        `Invalid refresh token: ${result.error}`,
-        401
-      );
+      throw new Error(`Invalid refresh token: ${result.error}`);
     }
 
     const payload = result.payload!;
@@ -287,12 +167,13 @@ export class DPoPAuth {
   }
 
   /**
+<<<<<<< HEAD
    * Revoke a token
    */
   async revokeToken(token: string): Promise<boolean> {
     if (!this.revocationStore) {
       throw new DPoPError(
-        DPoPErrorCode.CONFIG_MISSING_SECRET,
+        DPoPErrorCode.CONFIG_MISSING_STORE,
         'Revocation store is not configured',
         500
       );
@@ -308,18 +189,33 @@ export class DPoPAuth {
   }
 
   /**
+=======
+>>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
    * Get Express middleware with current configuration
    */
   getMiddleware(options: Partial<MiddlewareOptions> = {}) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { dpopAuth } = require('./middleware/express');
-
-    return dpopAuth({
+    return dpopAuthMiddleware({
       secret: this.secret,
       ...this.config,
-      replayStore: this.replayStore,
+<<<<<<< HEAD
+      ...(this.replayStore ? { replayStore: this.replayStore } : {}),
+=======
+>>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
       ...options,
     });
+  }
+
+  /**
+   * Clean up internal resources (timers, stores)
+   * Call this in tests or serverless environments to prevent memory leaks
+   */
+  destroy(): void {
+    if (this.replayStore && 'stopCleanup' in this.replayStore) {
+      (this.replayStore as any).stopCleanup();
+    }
+    if (this.revocationStore && 'stop' in this.revocationStore) {
+      (this.revocationStore as any).stop();
+    }
   }
 }
 
@@ -336,7 +232,7 @@ export function createDPoPAuth(secret: string, config?: Partial<DPoPConfig>) {
 /**
  * Version information
  */
-export const VERSION = '2.0.0';
+export const VERSION = '1.0.0';
 
 /**
  * Library information
@@ -344,17 +240,8 @@ export const VERSION = '2.0.0';
 export const INFO = {
   name: 'dpop-auth',
   version: VERSION,
-  description: 'Device-bound authentication with DPoP tokens - Enhanced security edition',
+  description: 'Device-bound authentication with DPoP tokens',
   author: 'Abhinay Ambati',
   license: 'Apache-2.0',
   repository: 'https://github.com/abhinayambati/dpop-auth',
-  features: [
-    'Device-bound tokens',
-    'Anti-replay protection',
-    'Fingerprint binding',
-    'Rate limiting',
-    'Token revocation',
-    'Redis support',
-    'TypeScript native',
-  ],
 } as const;
