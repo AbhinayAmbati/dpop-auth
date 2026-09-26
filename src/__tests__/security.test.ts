@@ -57,7 +57,7 @@ describe('Security Utilities', () => {
         });
 
         it('should mask sensitive strings preserving only edges', () => {
-            const apiKey = '';
+            const apiKey = 'sk_live_abcdefghijklmn';
             const masked = maskSensitiveData(apiKey, 4);
             expect(masked.startsWith('sk_l')).toBe(true);
             expect(masked.endsWith('klmn')).toBe(true);

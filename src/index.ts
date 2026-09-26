@@ -41,6 +41,9 @@ export {
   MemoryReplayStore,
 } from './core/dpop';
 
+export { MemoryRevocationStore } from './core/token-utils';
+export type { RevocationStore } from './core/token-utils';
+
 // Express middleware
 export {
   dpopAuth,
@@ -70,24 +73,37 @@ export type {
 } from './types';
 
 // Import types for the utility class
-import type { DPoPConfig, MiddlewareOptions } from './types';
+import type { DPoPConfig, MiddlewareOptions, ReplayStore, AccessTokenPayload } from './types';
+import type { RevocationStore } from './core/token-utils';
 
 // Utility functions for common use cases
-import { createAccessToken, createRefreshToken, verifyRefreshToken } from './core/tokens';
+import { createAccessToken, createRefreshToken, verifyAccessToken, verifyRefreshToken } from './core/tokens';
 import { getKeyThumbprint } from './core/crypto';
-<<<<<<< HEAD
-import { validateSecretStrength } from './core/security';
 import { DPoPError, DPoPErrorCode } from './core/errors';
 import { dpopAuth as dpopAuthMiddleware } from './middleware/express';
-=======
->>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
+
+/**
+ * Options for the DPoPAuth utility class
+ */
+export interface DPoPAuthOptions extends Partial<DPoPConfig> {
+  /** Optional replay store for DPoP proof anti-replay protection */
+  replayStore?: ReplayStore;
+  /** Optional revocation store for token revocation */
+  revocationStore?: RevocationStore;
+}
 
 export class DPoPAuth {
   private config: Required<DPoPConfig>;
   private secret: string;
+  private replayStore: ReplayStore | undefined;
+  private revocationStore: RevocationStore | undefined;
 
-  constructor(secret: string, config: Partial<DPoPConfig> = {}) {
+  constructor(secret: string, options: DPoPAuthOptions = {}) {
+    const { replayStore, revocationStore, ...config } = options;
+
     this.secret = secret;
+    this.replayStore = replayStore;
+    this.revocationStore = revocationStore;
     this.config = {
       algorithm: 'ES256',
       expiresIn: 300,
@@ -128,6 +144,7 @@ export class DPoPAuth {
     return {
       accessToken,
       refreshToken,
+      thumbprint,
       expiresIn: this.config.expiresIn,
     };
   }
@@ -167,7 +184,6 @@ export class DPoPAuth {
   }
 
   /**
-<<<<<<< HEAD
    * Revoke a token
    */
   async revokeToken(token: string): Promise<boolean> {
@@ -189,18 +205,33 @@ export class DPoPAuth {
   }
 
   /**
-=======
->>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
+   * Verify a token (signature, expiry and revocation status)
+   */
+  async verifyToken(token: string): Promise<{
+    valid: boolean;
+    payload?: AccessTokenPayload;
+    error?: string;
+  }> {
+    const result = await verifyAccessToken(token, this.secret, this.config);
+    if (!result.valid || !result.payload) {
+      return { valid: false, error: result.error || 'Invalid access token' };
+    }
+
+    if (this.revocationStore && (await this.revocationStore.isRevoked(result.payload.jti))) {
+      return { valid: false, error: 'Token has been revoked' };
+    }
+
+    return { valid: true, payload: result.payload };
+  }
+
+  /**
    * Get Express middleware with current configuration
    */
   getMiddleware(options: Partial<MiddlewareOptions> = {}) {
     return dpopAuthMiddleware({
       secret: this.secret,
       ...this.config,
-<<<<<<< HEAD
       ...(this.replayStore ? { replayStore: this.replayStore } : {}),
-=======
->>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
       ...options,
     });
   }
@@ -225,8 +256,8 @@ export default DPoPAuth;
 /**
  * Quick setup function for common use cases
  */
-export function createDPoPAuth(secret: string, config?: Partial<DPoPConfig>) {
-  return new DPoPAuth(secret, config);
+export function createDPoPAuth(secret: string, options?: DPoPAuthOptions) {
+  return new DPoPAuth(secret, options);
 }
 
 /**

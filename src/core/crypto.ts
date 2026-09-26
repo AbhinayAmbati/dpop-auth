@@ -6,8 +6,6 @@ import type {
   KeyPairResult,
   FingerprintComponents
 } from '../types';
-<<<<<<< HEAD
-import { thumbprintCache, createJwkCacheKey, keyImportCache } from './cache';
 
 /**
  * Extended algorithm type - kept as an alias for backwards compatibility
@@ -23,22 +21,18 @@ const EC_ALGORITHM_CURVES: Record<string, string> = {
   ES384: 'P-384',
   ES512: 'P-521',
 };
-=======
->>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
 
 /**
  * Generate a cryptographic key pair for DPoP authentication
  */
-<<<<<<< HEAD
 export async function generateDPoPKeyPair(
   options: KeyPairOptions & { algorithm?: ExtendedAlgorithm } = {}
 ): Promise<KeyPairResult> {
   const { algorithm = 'ES256', keySize = 2048 } = options;
   let { curve } = options;
-=======
-export async function generateDPoPKeyPair(options: KeyPairOptions = {}) {
-  const { algorithm = 'ES256', keySize = 2048, curve = 'P-256' } = options;
->>>>>>> parent of a5361f7 (updated the security, implement new algorithms, caching, rate limiting)
+
+  // Default the curve from the algorithm when not explicitly provided
+  curve = curve ?? EC_ALGORITHM_CURVES[algorithm] ?? 'P-256';
 
   let keyPair;
 
