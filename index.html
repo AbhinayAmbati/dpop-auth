@@ -39,8 +39,19 @@
   .gh-btn:hover{background:var(--black);color:var(--pink)}
 
   /* ---------- Hero ---------- */
-  .hero{position:relative;padding:96px 0 80px;overflow:hidden}
-  .hero-wire{position:absolute;right:-140px;top:40px;width:560px;opacity:.28;pointer-events:none}
+  .hero{position:relative;display:flex;align-items:center;min-height:calc(100vh - 62px);padding:96px 0;overflow:hidden}
+  .hero .wrap{position:relative;z-index:1;width:100%}
+  .cube-scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;perspective:1400px;pointer-events:none}
+  .cube{--cs:min(78vmin,680px);position:relative;width:var(--cs);height:var(--cs);transform-style:preserve-3d;animation:spin 32s linear infinite;opacity:.26}
+  .cube .face{position:absolute;inset:0;border:2.5px solid var(--black)}
+  .cube .f1{transform:translateZ(calc(var(--cs)/2))}
+  .cube .f2{transform:rotateY(180deg) translateZ(calc(var(--cs)/2))}
+  .cube .f3{transform:rotateY(90deg) translateZ(calc(var(--cs)/2))}
+  .cube .f4{transform:rotateY(-90deg) translateZ(calc(var(--cs)/2))}
+  .cube .f5{transform:rotateX(90deg) translateZ(calc(var(--cs)/2))}
+  .cube .f6{transform:rotateX(-90deg) translateZ(calc(var(--cs)/2))}
+  @keyframes spin{from{transform:rotateX(-24deg) rotateY(0deg)}to{transform:rotateX(-24deg) rotateY(360deg)}}
+  @media (prefers-reduced-motion:reduce){.cube{animation:none}}
   .eyebrow{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;display:inline-flex;align-items:center;gap:10px;margin-bottom:26px}
   .eyebrow::before{content:"";width:34px;height:2px;background:var(--black)}
   .crop{position:relative;padding:22px}
@@ -124,7 +135,6 @@
   @media (max-width:920px){
     .duo{grid-template-columns:1fr}
     .cols{grid-template-columns:1fr}
-    .hero-wire{display:none}
     .statrow{gap:40px}
   }
 </style>
@@ -159,15 +169,16 @@
 
 <!-- ============ HERO ============ -->
 <section class="hero" id="top">
-  <svg class="hero-wire" viewBox="0 0 400 400" fill="none" stroke="#0d0b0a" stroke-width="1.6" aria-hidden="true">
-    <path d="M200 40 320 110v140L200 320 80 250V110z"/>
-    <path d="M80 110l120 70 120-70M200 320V180"/>
-    <path d="M140 75l60 35 60-35M200 110v120"/>
-    <path d="M200 180 290 127v106L200 286l-90-53V127z"/>
-    <path d="M200 20 340 100v160L200 340 60 260V100z"/>
-    <path d="M60 100l140 80 140-80M200 340V180"/>
-    <path d="M110 60l90 52 90-52M290 340v-93M110 340v-93"/>
-  </svg>
+  <div class="cube-scene" aria-hidden="true">
+    <div class="cube">
+      <div class="face f1"></div>
+      <div class="face f2"></div>
+      <div class="face f3"></div>
+      <div class="face f4"></div>
+      <div class="face f5"></div>
+      <div class="face f6"></div>
+    </div>
+  </div>
   <div class="wrap">
     <span class="eyebrow">DPoP · Node.js · Express</span>
     <div class="crop"><i></i><i></i><i></i><i></i>
