@@ -104,14 +104,22 @@
   .c{color:#8a8578}.k{color:#7a3d10}.s{color:#0e7a52}.f{color:#005a9e}
 
   /* ---------- Footer ---------- */
-  footer{border-top:2px solid var(--black);padding:26px 0}
-  .foot{display:flex;align-items:center;gap:22px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;font-weight:500}
-  .foot .sep{opacity:.4}
-  .foot a{text-decoration:none;font-weight:700}
-  .foot a:hover{text-decoration:underline}
-  .foot .right{margin-left:auto;display:flex;gap:18px;align-items:center}
-  .foot svg{width:15px;height:15px}
-  .foot .npm-chip{background:var(--black);color:var(--paper);font-weight:700;padding:2px 7px;letter-spacing:.02em}
+  footer{background:var(--black);color:var(--paper)}
+  .foot-hero{position:relative;padding:104px 0 80px;text-align:center;overflow:hidden}
+  .foot-hero .wrap{position:relative}
+  .foot-wire{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:520px;max-width:90vw;opacity:.14;pointer-events:none}
+  .foot-brand{display:inline-flex;align-items:center;gap:16px;font-family:var(--display);font-size:clamp(30px,4vw,44px);letter-spacing:-.02em}
+  .foot-brand svg{width:42px;height:42px}
+  .foot-b64{margin-top:28px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;opacity:.5}
+  .foot-bar{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:22px 0 26px;font-family:var(--mono);font-size:12px;font-weight:500}
+  .foot-bar a{text-decoration:none;font-weight:700;color:var(--paper)}
+  .foot-bar a:hover{text-decoration:underline}
+  .foot-bar .right{display:flex;gap:18px;align-items:center}
+  .foot-bar svg{width:16px;height:16px;color:var(--paper)}
+  .foot-bar .npm-chip{background:var(--paper);color:var(--black);font-weight:700;padding:2px 7px;letter-spacing:.02em}
+  @media (max-width:700px){
+    .foot-bar{justify-content:center;text-align:center}
+  }
 
   @media (max-width:920px){
     .duo{grid-template-columns:1fr}
@@ -341,9 +349,26 @@ app.listen(<span class="f">3000</span>);</pre>
 
 <!-- ============ FOOTER ============ -->
 <footer>
-  <div class="wrap foot">
+  <div class="foot-hero">
+    <svg class="foot-wire" viewBox="0 0 400 400" fill="none" stroke="#f5f2ec" stroke-width="1.6" aria-hidden="true">
+      <path d="M200 40 320 110v140L200 320 80 250V110z"/>
+      <path d="M80 110l120 70 120-70M200 320V180"/>
+      <path d="M140 75l60 35 60-35M200 110v120"/>
+      <path d="M200 180 290 127v106L200 286l-90-53V127z"/>
+      <path d="M200 20 340 100v160L200 340 60 260V100z"/>
+      <path d="M60 100l140 80 140-80M200 340V180"/>
+      <path d="M110 60l90 52 90-52M290 340v-93M110 340v-93"/>
+    </svg>
+    <div class="wrap">
+      <div class="foot-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 22V12"/></svg>
+        dpop-auth
+      </div>
+      <div class="foot-b64">RGVtb25zdHJhdGlvbiBvZiBQcm9vZi1vZi1Qb3NzZXNzaW9u</div>
+    </div>
+  </div>
+  <div class="wrap foot-bar">
     <span>dpop-auth © 2026</span>
-    <span class="sep">—</span>
     <span>Apache-2.0</span>
     <div class="right">
       <a href="https://github.com/AbhinayAmbati/dpop-auth" target="_blank" rel="noopener" aria-label="GitHub"><svg><use href="#i-github"/></svg></a>
