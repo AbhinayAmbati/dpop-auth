@@ -3,175 +3,121 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>dpop-auth — Device-bound authentication for Node.js</title>
+<title>dpop-auth — A stolen token should be worthless</title>
 <meta name="description" content="dpop-auth implements DPoP (Demonstration of Proof-of-Possession) for Node.js. Tokens are cryptographically bound to the device that owns them — a stolen token is worthless.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237B2CFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230d0b0a' stroke-width='2.4' stroke-linecap='square'%3E%3Cpath d='M12 2 3 7v10l9 5 9-5V7z'/%3E%3Cpath d='M3 7l9 5 9-5M12 22V12'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1a1a24;
-    --muted:#64626e;
-    --faint:#97959f;
-    --border:#e9e8ef;
-    --bg:#ffffff;
-    --bg-soft:#fafafc;
-    --purple:#7B2CFF;
-    --purple-dark:#6320d4;
-    --purple-tint:#f5edff;
-    --green:#0e9f6e;
-    --green-bright:#34d399;
-    --red:#e5484d;
-    --code-bg:#171322;
-    --radius:14px;
-    --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --pink:#ff7059;
+    --pink-deep:#e85a44;
+    --black:#0d0b0a;
+    --paper:#f5f2ec;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+    --sans:'Archivo',sans-serif;
+    --display:'Archivo Black',sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{font-family:var(--font);color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
-  section{scroll-margin-top:80px}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
-  h2{font-size:clamp(26px,4vw,34px);letter-spacing:-.02em;font-weight:800}
-  .section-sub{color:var(--muted);margin-top:10px;font-size:16.5px;max-width:560px}
-  .icon{width:18px;height:18px;flex:none}
+  body{background:var(--pink);color:var(--black);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px}
 
   /* ---------- Nav ---------- */
-  header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
-  .nav{display:flex;align-items:center;gap:28px;height:64px}
-  .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font-weight:700;font-size:16.5px;letter-spacing:-.01em}
-  .brand svg{width:24px;height:24px;color:var(--purple)}
-  .ver{font-family:var(--mono);font-size:11.5px;font-weight:500;color:var(--purple);background:var(--purple-tint);border:1px solid #e4d3ff;border-radius:99px;padding:2px 9px}
-  .nav-links{display:flex;gap:26px;margin-left:12px}
-  .nav-links a{color:var(--muted);text-decoration:none;font-size:14.5px;font-weight:500;transition:color .15s}
-  .nav-links a:hover{color:var(--ink)}
-  .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
-  .btn-gh{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--border);border-radius:9px;text-decoration:none;color:var(--ink);font-size:14px;font-weight:600;transition:border-color .15s,background .15s}
-  .btn-gh:hover{border-color:#d5d3de;background:var(--bg-soft)}
+  header{border-bottom:2px solid var(--black)}
+  .nav{display:flex;align-items:center;height:62px;gap:14px}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:-.02em}
+  .brand svg{width:22px;height:22px}
+  .brand .v{font-size:11px;font-weight:500;border:1.5px solid var(--black);padding:1px 7px}
+  .nav-right{margin-left:auto;display:flex;gap:18px;align-items:center}
+  .nav-right a{font-family:var(--mono);font-size:13px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:7px}
+  .nav-right a:hover{text-decoration:underline}
+  .nav-right svg{width:16px;height:16px}
+  .gh-btn{border:2px solid var(--black);padding:6px 12px}
+  .gh-btn:hover{background:var(--black);color:var(--pink)}
 
   /* ---------- Hero ---------- */
-  .hero{padding:84px 0 72px}
-  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
-  .eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--purple);background:var(--purple-tint);border:1px solid #e4d3ff;border-radius:99px;padding:5px 13px;margin-bottom:22px}
-  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--purple)}
-  h1{font-size:clamp(34px,5.2vw,52px);line-height:1.08;letter-spacing:-.032em;font-weight:800}
-  h1 em{font-style:normal;color:var(--purple)}
-  .hero p.lead{margin-top:18px;font-size:17.5px;color:var(--muted);max-width:480px}
-  .hero-ctas{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
-  .btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--purple);color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px;transition:background .15s,transform .1s}
-  .btn-primary:hover{background:var(--purple-dark)}
-  .btn-ghost{display:inline-flex;align-items:center;gap:8px;color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px;border:1px solid var(--border);transition:border-color .15s,background .15s}
-  .btn-ghost:hover{border-color:#d5d3de;background:var(--bg-soft)}
-  .install{margin-top:28px;display:inline-flex;align-items:center;gap:14px;background:var(--code-bg);border-radius:10px;padding:12px 8px 12px 16px;font-family:var(--mono);font-size:14px}
-  .install .dollar{color:#8b86a3;margin-right:2px}
-  .install code{color:#eceafb;font-weight:500}
-  .copy-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#c9c4dd;border-radius:7px;padding:7px 9px;cursor:pointer;font-family:var(--font);font-size:12px;font-weight:500;transition:background .15s,color .15s}
-  .copy-btn:hover{background:rgba(255,255,255,.14);color:#fff}
-  .copy-btn.copied{background:rgba(52,211,153,.14);border-color:rgba(52,211,153,.35);color:#6ee7b7}
+  .hero{position:relative;padding:96px 0 80px;overflow:hidden}
+  .hero-wire{position:absolute;right:-140px;top:40px;width:560px;opacity:.28;pointer-events:none}
+  .eyebrow{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;display:inline-flex;align-items:center;gap:10px;margin-bottom:26px}
+  .eyebrow::before{content:"";width:34px;height:2px;background:var(--black)}
+  .crop{position:relative;padding:22px}
+  .crop i{position:absolute;width:26px;height:26px;border:0 solid var(--black)}
+  .crop i:nth-child(1){top:0;left:0;border-top-width:2.5px;border-left-width:2.5px}
+  .crop i:nth-child(2){top:0;right:0;border-top-width:2.5px;border-right-width:2.5px}
+  .crop i:nth-child(3){bottom:0;left:0;border-bottom-width:2.5px;border-left-width:2.5px}
+  .crop i:nth-child(4){bottom:0;right:0;border-bottom-width:2.5px;border-right-width:2.5px}
+  h1{font-family:var(--display);font-size:clamp(46px,7.4vw,104px);line-height:.96;letter-spacing:-.025em;max-width:14ch;text-transform:uppercase}
+  .hero-sub{margin-top:34px;font-family:var(--mono);font-size:14.5px;font-weight:500;max-width:560px;line-height:1.75}
+  .hero-sub b{font-weight:700;background:var(--black);color:var(--pink);padding:0 5px}
+  .install{margin-top:38px;display:inline-flex;align-items:stretch;border:2.5px solid var(--black);background:var(--paper)}
+  .install .dollar{font-family:var(--mono);font-size:14px;font-weight:700;padding:12px 0 12px 16px}
+  .install code{font-family:var(--mono);font-size:14px;font-weight:500;padding:12px 10px 12px 8px}
+  .copy-btn{display:inline-flex;align-items:center;justify-content:center;background:var(--black);color:var(--paper);border:none;border-left:2.5px solid var(--black);padding:0 14px;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:700;transition:background .12s,color .12s}
+  .copy-btn svg{width:15px;height:15px}
+  .copy-btn.copied{background:#0e9f6e}
+  .b64{margin-top:44px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;opacity:.55;word-break:break-all;max-width:520px}
 
-  /* Hero code card */
-  .hero-card{background:var(--code-bg);border:1px solid #2a2340;border-radius:16px;overflow:hidden;box-shadow:0 24px 60px -24px rgba(23,18,34,.45)}
-  .hero-card-head{display:flex;align-items:center;gap:8px;padding:13px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
-  .hero-card-head .tl{display:flex;gap:6px}
-  .hero-card-head .tl span{width:11px;height:11px;border-radius:50%;display:block}
-  .hero-card-head .tl span:nth-child(1){background:#ff5f57}
-  .hero-card-head .tl span:nth-child(2){background:#febc2e}
-  .hero-card-head .tl span:nth-child(3){background:#28c840}
-  .hero-card-head .file{margin-left:8px;font-family:var(--mono);font-size:12px;color:#8b86a3}
-  .hero-card-body{padding:22px 22px 10px;font-family:var(--mono);font-size:13px;line-height:1.85}
-  .hk{color:#9d93c9}.hv{color:#f0b866}.hm{color:#a78bfa}.hp{color:#eceafb}
-  .req-label{display:inline-flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.14em;font-weight:600;color:#8b86a3;margin-bottom:8px}
-  .result-row{display:flex;align-items:center;gap:12px;margin:18px 0 8px;padding-top:16px;border-top:1px dashed rgba(255,255,255,.1)}
-  .badge-ok{display:inline-flex;align-items:center;gap:7px;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#6ee7b7;font-weight:600;font-size:12.5px;border-radius:99px;padding:4px 12px}
-  .badge-ok .dot{width:7px;height:7px;border-radius:50%;background:var(--green-bright)}
-  .result-note{font-family:var(--mono);font-size:12px;color:#8b86a3}
-  .hero-card-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid rgba(255,255,255,.07);margin-top:14px}
-  .proof-tag{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.13em;font-weight:600;color:#8b86a3}
-  .proof-tag svg{width:14px;height:14px;color:var(--green-bright)}
-  .ms{font-family:var(--mono);font-size:11.5px;color:#c4b5fd}
+  /* ---------- Terminals ---------- */
+  .section{padding:88px 0}
+  .label{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:40px}
+  .label::after{content:"";flex:1;height:2px;background:var(--black)}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:stretch}
+  .term{border:2.5px solid var(--black);background:var(--paper);display:flex;flex-direction:column;box-shadow:8px 8px 0 rgba(13,11,10,.9)}
+  .term-head{display:flex;align-items:center;gap:8px;background:var(--black);color:var(--paper);padding:9px 12px}
+  .term-head .lights{display:flex;gap:6px}
+  .term-head .lights span{width:10px;height:10px;display:block;border:1.5px solid var(--paper)}
+  .term-head .lights span:nth-child(1){background:#ff5f57}
+  .term-head .lights span:nth-child(2){background:#febc2e}
+  .term-head .lights span:nth-child(3){background:#28c840}
+  .term-head .title{font-family:var(--mono);font-size:12px;font-weight:700;margin-left:4px;letter-spacing:.04em}
+  .term-body{padding:20px 20px 16px;font-family:var(--mono);font-size:12.5px;line-height:1.8;overflow-x:auto;flex:1}
+  .term-body .p{color:#8a8578}
+  .term-body .cmd{font-weight:700}
+  .term-body .err{color:var(--pink-deep);font-weight:700}
+  .term-body .ok{color:#0e7a52;font-weight:700}
+  .term-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:2px solid var(--black);padding:10px 14px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .term-foot .bad{background:var(--black);color:var(--paper);padding:2px 8px}
+  .term-foot .good{color:var(--pink-deep)}
 
-  /* Stats strip */
-  .stats{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:18px 0}
-  .stats-inner{display:flex;gap:40px;flex-wrap:wrap}
-  .stat{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--muted);font-weight:500}
-  .stat svg{width:16px;height:16px;color:var(--purple)}
-  .stat strong{color:var(--ink);font-weight:600}
+  /* ---------- Stat wall ---------- */
+  .statwall{border-top:2px solid var(--black);border-bottom:2px solid var(--black);padding:80px 0}
+  .giant{font-family:var(--display);font-size:clamp(38px,6vw,84px);line-height:1;letter-spacing:-.02em;text-transform:uppercase;max-width:20ch}
+  .giant .num{background:var(--black);color:var(--pink);padding:0 12px;display:inline-block}
+  .statrow{display:flex;gap:64px;flex-wrap:wrap;margin-top:56px}
+  .stat .n{font-family:var(--display);font-size:clamp(40px,4.6vw,64px);line-height:1;letter-spacing:-.02em}
+  .stat .l{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:8px}
+  .footnote{margin-top:42px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;opacity:.6}
 
-  /* ---------- Sections ---------- */
-  .section{padding:84px 0}
-  .section.soft{background:var(--bg-soft)}
-  .section-head{margin-bottom:44px}
+  /* ---------- Columns ---------- */
+  .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:40px}
+  .col h3{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;display:inline-block;border-bottom:2.5px solid var(--black);padding-bottom:6px}
+  .col p{font-size:15px;line-height:1.7;max-width:34ch}
+  .col .hash-block{font-family:var(--mono);font-size:10.5px;line-height:2.1;letter-spacing:.03em;opacity:.75;word-break:break-all;border:1.5px solid var(--black);padding:14px 16px}
+  .col .hash-cap{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-top:8px}
 
-  /* Features */
-  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-  .feature{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px;transition:border-color .15s,transform .15s}
-  .feature:hover{border-color:#d9c8ff;transform:translateY(-2px)}
-  .feature-icon{width:40px;height:40px;border-radius:10px;background:var(--purple-tint);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
-  .feature-icon svg{width:20px;height:20px;color:var(--purple)}
-  .feature h3{font-size:16px;font-weight:700;letter-spacing:-.01em}
-  .feature p{font-size:14px;color:var(--muted);margin-top:7px;line-height:1.6}
-
-  /* How it works */
-  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:step}
-  .step{position:relative;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px}
-  .step-num{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--purple);background:var(--purple-tint);border:1px solid #e4d3ff;border-radius:8px;padding:3px 9px;display:inline-block;margin-bottom:16px}
-  .step h3{font-size:16px;font-weight:700}
-  .step p{font-size:14px;color:var(--muted);margin-top:7px;line-height:1.6}
-  .step code{font-family:var(--mono);font-size:12px;background:var(--bg-soft);border:1px solid var(--border);border-radius:5px;padding:1px 6px;color:var(--purple-dark)}
-
-  /* Comparison */
-  .table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:#fff}
-  table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:640px}
-  thead th{text-align:left;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:14px 18px;border-bottom:1px solid var(--border);white-space:nowrap}
-  thead th .th-note{display:block;font-size:10.5px;letter-spacing:.02em;text-transform:none;color:var(--faint);font-weight:400;margin-top:2px}
-  tbody td{padding:13px 18px;border-bottom:1px solid var(--border);color:var(--muted)}
-  tbody tr:last-child td{border-bottom:none}
-  tbody td:first-child{color:var(--ink);font-weight:500}
-  .col-ours{background:var(--purple-tint);text-align:center;width:130px}
-  thead th.col-ours{color:var(--purple);font-weight:700;text-align:center}
-  tbody td.col-ours{border-left:1px solid #e4d3ff;border-right:1px solid #e4d3ff}
-  tbody tr:last-child td.col-ours{border-bottom-right-radius:12px;border-bottom-left-radius:12px}
-  .yes{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:var(--purple);color:#fff}
-  .yes svg{width:14px;height:14px}
-  .no{display:inline-flex;color:#c7c5d1;font-size:14px}
-  .table-note{margin-top:14px;font-size:12.5px;color:var(--faint);display:flex;align-items:center;gap:7px}
-  .table-note svg{width:13px;height:13px;flex:none}
-
-  /* Quick start */
-  .qs-grid{display:grid;gap:18px}
-  .code-block{background:var(--code-bg);border-radius:14px;overflow:hidden;border:1px solid #2a2340}
-  .code-head{display:flex;align-items:center;justify-content:space-between;padding:11px 10px 11px 18px;border-bottom:1px solid rgba(255,255,255,.07)}
-  .code-title{font-family:var(--mono);font-size:12px;color:#8b86a3;display:flex;align-items:center;gap:8px}
-  .code-title svg{width:14px;height:14px}
-  .code-body{padding:20px 22px;overflow-x:auto}
-  .code-body pre{font-family:var(--mono);font-size:13px;line-height:1.8;color:#eceafb}
-  .code-body pre .c{color:#7d7799}.code-body pre .k{color:#c4b5fd}.code-body pre .s{color:#f0b866}.code-body pre .f{color:#93c5fd}
-  .code-body.copyable{cursor:pointer;transition:opacity .15s}
-  .code-body.copyable:hover{opacity:.85}
+  /* ---------- Quick start ---------- */
+  .qs .term{margin-bottom:26px}
+  .qs .term-body pre{font-family:var(--mono);font-size:12.5px;line-height:1.85}
+  .c{color:#8a8578}.k{color:#7a3d10}.s{color:#0e7a52}.f{color:#005a9e}
 
   /* ---------- Footer ---------- */
-  footer{border-top:1px solid var(--border);padding:34px 0;background:#fff}
-  .footer-inner{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-  .footer-brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px}
-  .footer-brand svg{width:20px;height:20px;color:var(--purple)}
-  .footer-tag{color:var(--faint);font-size:13.5px}
-  .footer-right{margin-left:auto;display:flex;align-items:center;gap:18px}
-  .footer-right a{color:var(--muted);display:inline-flex;transition:color .15s;text-decoration:none}
-  .footer-right a:hover{color:var(--ink)}
-  .footer-right .npm-chip{background:#CB3837;color:#fff;font-weight:700;font-size:11px;border-radius:5px;padding:3px 7px;letter-spacing:.02em}
-  .footer-right .license{font-size:12.5px;color:var(--faint)}
-  .footer-right .copyright{font-size:12.5px;color:var(--faint)}
+  footer{border-top:2px solid var(--black);padding:26px 0}
+  .foot{display:flex;align-items:center;gap:22px;flex-wrap:wrap;font-family:var(--mono);font-size:12px;font-weight:500}
+  .foot .sep{opacity:.4}
+  .foot a{text-decoration:none;font-weight:700}
+  .foot a:hover{text-decoration:underline}
+  .foot .right{margin-left:auto;display:flex;gap:18px;align-items:center}
+  .foot svg{width:15px;height:15px}
+  .foot .npm-chip{background:var(--black);color:var(--paper);font-weight:700;padding:2px 7px;letter-spacing:.02em}
 
-  @media (max-width:900px){
-    .hero-grid{grid-template-columns:1fr;gap:44px}
-    .features,.steps{grid-template-columns:1fr 1fr}
-    .nav-links{display:none}
-  }
-  @media (max-width:560px){
-    .features,.steps{grid-template-columns:1fr}
-    .install{width:100%}
-    .install code{font-size:13px}
+  @media (max-width:920px){
+    .duo{grid-template-columns:1fr}
+    .cols{grid-template-columns:1fr}
+    .hero-wire{display:none}
+    .statrow{gap:40px}
   }
 </style>
 </head>
@@ -181,19 +127,8 @@
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol>
-    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
-    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
-    <symbol id="i-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
-    <symbol id="i-device" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></symbol>
-    <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
-    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
-    <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
-    <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
-    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
-    <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
-    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><rect x="9" y="9" width="13" height="13"/><path d="M5 15H2V2h13v3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="square"><path d="M3 13l7 7L22 5"/></symbol>
   </defs>
 </svg>
 
@@ -201,14 +136,14 @@
 <header>
   <div class="wrap nav">
     <a class="brand" href="#top">
-      <svg><use href="#i-shield"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 22V12"/></svg>
       dpop-auth
-      <span class="ver">v1.0.2</span>
+      <span class="v">v1.0.2</span>
     </a>
     <div class="nav-right">
-      <a class="btn-gh" href="https://github.com/AbhinayAmbati/dpop-auth" target="_blank" rel="noopener">
-        <svg class="icon"><use href="#i-github"/></svg>
-        GitHub
+      <a href="https://www.npmjs.com/package/dpop-auth" target="_blank" rel="noopener">npm</a>
+      <a class="gh-btn" href="https://github.com/AbhinayAmbati/dpop-auth" target="_blank" rel="noopener">
+        <svg><use href="#i-github"/></svg>GitHub
       </a>
     </div>
   </div>
@@ -216,195 +151,132 @@
 
 <!-- ============ HERO ============ -->
 <section class="hero" id="top">
-  <div class="wrap hero-grid">
-    <div>
-      <span class="eyebrow"><span class="dot"></span>DPoP authentication for Node.js</span>
-      <h1>A stolen token should be <em>worthless.</em></h1>
-      <p class="lead">dpop-auth binds every access token to the device that owns it using DPoP — Demonstration of Proof-of-Possession. Copied tokens fail verification. Replayed requests get rejected.</p>
-      <div class="hero-ctas">
-        <a class="btn-primary" href="#quick-start">Get started <svg class="icon"><use href="#i-arrow"/></svg></a>
-        <a class="btn-ghost" href="https://github.com/AbhinayAmbati/dpop-auth" target="_blank" rel="noopener"><svg class="icon"><use href="#i-github"/></svg> Star on GitHub</a>
-      </div>
-      <div class="install">
-        <span class="dollar">$</span>
-        <code>npm install dpop-auth</code>
-        <button class="copy-btn" data-copy="npm install dpop-auth" aria-label="Copy install command">
-          <svg class="icon"><use href="#i-copy"/></svg>
-        </button>
-      </div>
+  <svg class="hero-wire" viewBox="0 0 400 400" fill="none" stroke="#0d0b0a" stroke-width="1.6" aria-hidden="true">
+    <path d="M200 40 320 110v140L200 320 80 250V110z"/>
+    <path d="M80 110l120 70 120-70M200 320V180"/>
+    <path d="M140 75l60 35 60-35M200 110v120"/>
+    <path d="M200 180 290 127v106L200 286l-90-53V127z"/>
+    <path d="M200 20 340 100v160L200 340 60 260V100z"/>
+    <path d="M60 100l140 80 140-80M200 340V180"/>
+    <path d="M110 60l90 52 90-52M290 340v-93M110 340v-93"/>
+  </svg>
+  <div class="wrap">
+    <span class="eyebrow">DPoP · Node.js · Express</span>
+    <div class="crop"><i></i><i></i><i></i><i></i>
+      <h1>A stolen token should be worthless</h1>
     </div>
+    <p class="hero-sub">Bearer JWTs are passwords that never expire. dpop-auth binds every access token to the device key that earned it — <b>proof on every request</b>, replay protection, instant revocation.</p>
+    <div class="install">
+      <span class="dollar">$</span>
+      <code>npm install dpop-auth</code>
+      <button class="copy-btn" data-copy="npm install dpop-auth" aria-label="Copy install command"><svg><use href="#i-copy"/></svg></button>
+    </div>
+    <p class="b64">RGVtb25zdHJhdGlvbiBvZiBQcm9vZi1vZi1Qb3NzZXNzaW9u</p>
+  </div>
+</section>
 
-    <div class="hero-card">
-      <div class="hero-card-head">
-        <div class="tl"><span></span><span></span><span></span></div>
-        <span class="file">api-request.ts</span>
-      </div>
-      <div class="hero-card-body">
-        <span class="req-label">REQUEST</span><br>
-        <span class="hm">POST</span> <span class="hp">/api/protected/data</span><br>
-        <span class="hk">Authorization:</span> <span class="hv">Bearer eyJhbGciOiJFUzI1NiIs...</span><br>
-        <span class="hk">DPoP:</span> <span class="hv">eyJ0eXAiOiJkcG9wK2p3dCIs...</span><br>
-        <div class="result-row">
-          <span class="badge-ok"><span class="dot"></span>200 · VERIFIED</span>
-          <span class="result-note">// proof valid, device matched</span>
+<!-- ============ ATTACK COMPARISON ============ -->
+<section class="section" id="attack">
+  <div class="wrap">
+    <span class="label">The same stolen token, sent twice</span>
+    <div class="duo">
+      <div class="term">
+        <div class="term-head">
+          <div class="lights"><span></span><span></span><span></span></div>
+          <span class="title">dpop-auth</span>
+        </div>
+        <div class="term-body">
+          <span class="p"># attacker replays a stolen token</span><br>
+          <span class="cmd">$ curl /api/protected/data \</span><br>
+          <span class="p">&nbsp;&nbsp;-H "Authorization: Bearer eyJhbGciOi..." \</span><br>
+          <span class="p">&nbsp;&nbsp;-H "DPoP: attacker-forged-proof"</span><br>
+          <br>
+          <span class="err">403 Forbidden</span><br>
+          { "error": "invalid_dpop_proof",<br>
+          &nbsp;&nbsp"reason": "thumbprint mismatch" }
+        </div>
+        <div class="term-foot">
+          <span class="bad">REJECTED</span>
+          <span class="good">0.8ms · attacker locked out</span>
         </div>
       </div>
-      <div class="hero-card-foot">
-        <span class="proof-tag"><svg><use href="#i-shield"/></svg>PROOF VALIDATED · DEVICE BOUND</span>
-        <span class="ms">~5ms</span>
+      <div class="term">
+        <div class="term-head">
+          <div class="lights"><span></span><span></span><span></span></div>
+          <span class="title">jsonwebtoken</span>
+        </div>
+        <div class="term-body">
+          <span class="p"># attacker replays a stolen token</span><br>
+          <span class="cmd">$ curl /api/protected/data \</span><br>
+          <span class="p">&nbsp;&nbsp;-H "Authorization: Bearer eyJhbGciOi..."</span><br>
+          <br>
+          <span class="ok">200 OK</span><br>
+          { "data": "sensitive payload",<br>
+          &nbsp;&nbsp"user": "user_123" }
+        </div>
+        <div class="term-foot">
+          <span class="bad">ACCEPTED</span>
+          <span class="good">attacker is the user now · 300s</span>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ STATS ============ -->
-<div class="stats">
-  <div class="wrap stats-inner">
-    <span class="stat"><svg><use href="#i-zap"/></svg><strong>~5ms</strong>&nbsp;verify overhead <em style="font-style:normal;color:var(--faint);font-size:12px">(self-reported)</em></span>
-    <span class="stat"><svg><use href="#i-shield"/></svg><strong>43</strong>&nbsp;tests passing</span>
-    <span class="stat"><svg><use href="#i-layers"/></svg><strong>TypeScript</strong>&nbsp;definitions included</span>
-    <span class="stat"><svg><use href="#i-db"/></svg><strong>1</strong>&nbsp;runtime dependency</span>
+<!-- ============ STAT WALL ============ -->
+<div class="statwall">
+  <div class="wrap">
+    <p class="giant"><span class="num">0</span> stolen tokens accepted. <span class="num">~5ms</span> to prove it.</p>
+    <div class="statrow">
+      <div class="stat"><div class="n">~5ms</div><div class="l">verify overhead</div></div>
+      <div class="stat"><div class="n">43</div><div class="l">tests passing</div></div>
+      <div class="stat"><div class="n">1</div><div class="l">runtime dependency</div></div>
+      <div class="stat"><div class="n">2</div><div class="l">stores: memory · redis</div></div>
+    </div>
+    <p class="footnote">Timings self-reported from the project's own benchmarks. Real-world numbers depend on hardware and integration.</p>
   </div>
 </div>
 
-<!-- ============ FEATURES ============ -->
-<section class="section" id="features">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>Everything a stolen-token defense needs</h2>
-      <p class="section-sub">One library that signs, binds, verifies and revokes — with batteries included.</p>
+<!-- ============ COLUMNS ============ -->
+<section class="section">
+  <div class="wrap cols">
+    <div class="col">
+      <h3>Not a bearer token</h3>
+      <p>A bearer token is a password that never expires — anyone holding it becomes the user. dpop-auth never trusts possession alone: the token is only half of the credential.</p>
     </div>
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon"><svg><use href="#i-shield"/></svg></div>
-        <h3>Proof-of-possession tokens</h3>
-        <p>Every request carries a fresh DPoP proof JWT signed by the device's private key. No key, no access.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon"><svg><use href="#i-rotate"/></svg></div>
-        <h3>Anti-replay protection</h3>
-        <p>JTI tracking guarantees each proof is used exactly once — a captured request can never be replayed.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon"><svg><use href="#i-device"/></svg></div>
-        <h3>Device binding</h3>
-        <p>Access tokens are cryptographically tied to device keys and fingerprints. Stolen tokens simply fail.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon"><svg><use href="#i-ban"/></svg></div>
-        <h3>Token revocation</h3>
-        <p>Built-in revocation stores let you kill compromised tokens instantly, before they expire.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon"><svg><use href="#i-layers"/></svg></div>
-        <h3>Express middleware</h3>
-        <p>Drop-in route protection. Wrap a route, read <code style="font-family:var(--mono);font-size:12px">req.thumbprint</code>, done.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon"><svg><use href="#i-db"/></svg></div>
-        <h3>Pluggable stores</h3>
-        <p>Memory and Redis stores for replay and revocation state — swap implementations without touching your routes.</p>
-      </div>
+    <div class="col">
+      <h3>Proof on every request</h3>
+      <p>Each API call carries a fresh ECDSA signature bound to the method, URI, and a one-time nonce. JTI tracking kills replays; revocation stores kill stolen tokens instantly.</p>
     </div>
-  </div>
-</section>
-
-<!-- ============ HOW IT WORKS ============ -->
-<section class="section soft" id="how-it-works">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>How it works</h2>
-      <p class="section-sub">Three moving parts, one guarantee: the caller is the device the token was issued to.</p>
+    <div class="col">
+      <h3>The proof itself</h3>
+      <div class="hash-block">eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiWU9ZIiwieSI6ImJ2TUpnIn19.eyJodG0iOiIweEFCQyIsImlhdCI6MTc2MTk2NjQwMCwianRpIjoiZjM3YyJ9.c2lnbmF0dXJl</div>
+      <div class="hash-cap">DPoP proof JWT — header · claims · signature</div>
     </div>
-    <div class="steps">
-      <div class="step">
-        <span class="step-num">01</span>
-        <h3>Keys live on the device</h3>
-        <p>The client generates an ECDSA <code>P-256</code> key pair and registers the public JWK at login. The private key never leaves the device.</p>
-      </div>
-      <div class="step">
-        <span class="step-num">02</span>
-        <h3>Every request is signed</h3>
-        <p>Each API call carries a short-lived proof in the <code>DPoP</code> header — signed with the private key, unique per request, bound to the method and URI.</p>
-      </div>
-      <div class="step">
-        <span class="step-num">03</span>
-        <h3>Server verifies everything</h3>
-        <p>Middleware verifies the signature, rejects replays, and checks the token's key thumbprint against the proof. Mismatch means theft — rejected.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ COMPARE ============ -->
-<section class="section" id="compare">
-  <div class="wrap">
-    <div class="section-head">
-      <h2>dpop-auth vs. bearer-token libraries</h2>
-      <p class="section-sub">What you get out of the box, compared to the libraries most Node.js APIs use today.</p>
-    </div>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Capability</th>
-            <th class="col-ours">dpop-auth</th>
-            <th>jsonwebtoken</th>
-            <th>passport-jwt</th>
-            <th>oauth4webapi</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>Proof-of-possession (token bound to a key)</td>
-            <td class="col-ours"><span class="yes"><svg><use href="#i-check"/></svg></span></td>
-            <td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>Replay protection (JTI tracking)</td>
-            <td class="col-ours"><span class="yes"><svg><use href="#i-check"/></svg></span></td>
-            <td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>Device fingerprint binding</td>
-            <td class="col-ours"><span class="yes"><svg><use href="#i-check"/></svg></span></td>
-            <td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>Token revocation store</td>
-            <td class="col-ours"><span class="yes"><svg><use href="#i-check"/></svg></span></td>
-            <td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="no">—</span></td></tr>
-          <tr><td>Express middleware included</td>
-            <td class="col-ours"><span class="yes"><svg><use href="#i-check"/></svg></span></td>
-            <td><span class="no">—</span></td><td><span class="yes" style="background:#e5e3ee;color:#5b5967"><svg><use href="#i-check"/></svg></span></td><td><span class="no">—</span></td></tr>
-          <tr><td>DPoP helpers (RFC-style proof JWTs)</td>
-            <td class="col-ours"><span class="yes"><svg><use href="#i-check"/></svg></span></td>
-            <td><span class="no">—</span></td><td><span class="no">—</span></td><td><span class="yes" style="background:#e5e3ee;color:#5b5967"><svg><use href="#i-check"/></svg></span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="table-note"><svg><use href="#i-info"/></svg>Self-reported comparison based on each project's documentation. Real-world protection always depends on your integration.</p>
   </div>
 </section>
 
 <!-- ============ QUICK START ============ -->
-<section class="section soft" id="quick-start">
+<section class="section qs" id="quick-start">
   <div class="wrap">
-    <div class="section-head">
-      <h2>Quick start</h2>
-      <p class="section-sub">Protecting your first route takes about two minutes.</p>
-    </div>
-    <div class="qs-grid">
-      <div class="code-block">
-        <div class="code-head">
-          <span class="code-title"><svg><use href="#i-terminal"/></svg>Terminal</span>
-          <button class="copy-btn" data-copy="npm install dpop-auth" aria-label="Copy install command">
-            <svg class="icon"><use href="#i-copy"/></svg>
-          </button>
-        </div>
-        <div class="code-body">
-<pre><span class="c">// install</span>
-<span class="f">npm</span> install dpop-auth</pre>
-        </div>
-      </div>
+    <span class="label">Quick start</span>
 
-      <div class="code-block">
-        <div class="code-head">
-          <span class="code-title"><svg><use href="#i-key"/></svg>server.ts</span>
-          <button class="copy-btn" data-copy="import express from 'express';
+    <div class="term">
+      <div class="term-head">
+        <div class="lights"><span></span><span></span><span></span></div>
+        <span class="title">terminal</span>
+        <button class="copy-btn" style="margin-left:auto;background:transparent;border:1.5px solid var(--paper);padding:2px 8px" data-copy="npm install dpop-auth" aria-label="Copy install command"><svg style="width:13px;height:13px"><use href="#i-copy"/></svg></button>
+      </div>
+      <div class="term-body">
+        <pre><span class="f">npm</span> install dpop-auth</pre>
+      </div>
+    </div>
+
+    <div class="term">
+      <div class="term-head">
+        <div class="lights"><span></span><span></span><span></span></div>
+        <span class="title">server.ts</span>
+        <button class="copy-btn" style="margin-left:auto;background:transparent;border:1.5px solid var(--paper);padding:2px 8px" data-copy="import express from 'express';
 import { dpopAuth, createDPoPAuth } from 'dpop-auth';
 
 const app = express();
@@ -431,12 +303,10 @@ app.get('/api/protected/data', (req, res) => {
   });
 });
 
-app.listen(3000);" aria-label="Copy server code">
-            <svg class="icon"><use href="#i-copy"/></svg>
-          </button>
-        </div>
-        <div class="code-body">
-<pre><span class="k">import</span> express <span class="k">from</span> <span class="s">'express'</span>;
+app.listen(3000);" aria-label="Copy server code"><svg style="width:13px;height:13px"><use href="#i-copy"/></svg></button>
+      </div>
+      <div class="term-body">
+        <pre><span class="k">import</span> express <span class="k">from</span> <span class="s">'express'</span>;
 <span class="k">import</span> { dpopAuth, createDPoPAuth } <span class="k">from</span> <span class="s">'dpop-auth'</span>;
 
 <span class="k">const</span> app = express();
@@ -464,7 +334,6 @@ app.get(<span class="s">'/api/protected/data'</span>, (req, res) => {
 });
 
 app.listen(<span class="f">3000</span>);</pre>
-        </div>
       </div>
     </div>
   </div>
@@ -472,31 +341,28 @@ app.listen(<span class="f">3000</span>);</pre>
 
 <!-- ============ FOOTER ============ -->
 <footer>
-  <div class="wrap footer-inner">
-    <span class="footer-brand"><svg><use href="#i-shield"/></svg>dpop-auth</span>
-    <span class="footer-tag">Device-bound authentication for Node.js</span>
-    <div class="footer-right">
-      <a href="https://github.com/AbhinayAmbati/dpop-auth" target="_blank" rel="noopener" aria-label="GitHub repository">
-        <svg class="icon" style="width:20px;height:20px"><use href="#i-github"/></svg>
-      </a>
-      <a href="https://www.npmjs.com/package/dpop-auth" target="_blank" rel="noopener" aria-label="npm package" class="npm-chip">npm</a>
-      <span class="license">Apache-2.0</span>
-      <span class="copyright">© 2026 Abhinay Ambati</span>
+  <div class="wrap foot">
+    <span>dpop-auth © 2026</span>
+    <span class="sep">—</span>
+    <span>Apache-2.0</span>
+    <div class="right">
+      <a href="https://github.com/AbhinayAmbati/dpop-auth" target="_blank" rel="noopener" aria-label="GitHub"><svg><use href="#i-github"/></svg></a>
+      <a href="https://www.npmjs.com/package/dpop-auth" target="_blank" rel="noopener" class="npm-chip">npm</a>
+      <a href="https://abhinayambati.github.io/dpop-auth/">docs</a>
     </div>
   </div>
 </footer>
 
 <script>
-  // ---- copy buttons ----
   document.querySelectorAll('.copy-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
       var text = btn.getAttribute('data-copy');
       function done(){
         btn.classList.add('copied');
-        btn.innerHTML = '<svg class="icon"><use href="#i-check"/></svg>';
+        btn.innerHTML = '<svg><use href="#i-check"/></svg>';
         setTimeout(function(){
           btn.classList.remove('copied');
-          btn.innerHTML = '<svg class="icon"><use href="#i-copy"/></svg>';
+          btn.innerHTML = '<svg><use href="#i-copy"/></svg>';
         }, 1600);
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
