@@ -274,5 +274,4 @@ export const INFO = {
   description: 'Device-bound authentication with DPoP tokens',
   author: 'Abhinay Ambati',
   license: 'Apache-2.0',
-  repository: 'https://github.com/abhinayambati/dpop-auth',
 } as const;
